@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SpendWise — Daily Expense Manager</title>
+  <meta name="description" content="Track, manage and save your daily expenses smartly with SpendWise." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- ── AUTH SCREEN ─────────────────────────────────────────── -->
+    <div class="auth-screen" id="auth-card">
+      <div class="auth-left">
+        <div class="auth-brand">
+          <span class="brand-icon">💸</span>
+          <span class="brand-name">SpendWise</span>
+        </div>
+        <h1 class="auth-headline">Take control of<br />your finances.</h1>
+        <p class="auth-sub">Track every rupee. Set smart budgets.<br />Stay ahead of your spending.</p>
+        <div class="auth-features">
+          <div class="feat"><span>✅</span> Date-wise budget tracking</div>
+          <div class="feat"><span>✅</span> Instant expense logging</div>
+          <div class="feat"><span>✅</span> PDF &amp; CSV export</div>
+          <div class="feat"><span>✅</span> Built-in calculator</div>
+        </div>
+      </div>
+      <div class="auth-right">
+        <div class="auth-card-box">
+          <div class="auth-card-header">
+            <h2 id="auth-title">Welcome back</h2>
+            <p id="auth-subtitle">Sign in to your account</p>
+          </div>
+          <!-- Role Toggle -->
+          <div class="role-toggle">
+            <button class="role-btn active" id="role-user" type="button">👤 User</button>
+            <button class="role-btn" id="role-admin" type="button">🛡️ Admin</button>
+          </div>
+          <!-- Login Form -->
+          <div class="auth-form" id="login-form">
+            <div class="input-group">
+              <span class="input-icon">👤</span>
+              <input id="login-username" placeholder="Username" autocomplete="username" />
+            </div>
+            <div class="input-group">
+              <span class="input-icon">🔒</span>
+              <input id="login-password" placeholder="Password" type="password" autocomplete="current-password" />
+            </div>
+            <button id="login-btn" class="btn-auth" type="button">Sign In →</button>
+            <p class="auth-switch" id="register-link">Don't have an account? <a id="show-register">Create one</a></p>
+          </div>
+          <!-- Register Form -->
+          <div class="auth-form hidden" id="register-form">
+            <div class="input-group">
+              <span class="input-icon">👤</span>
+              <input id="reg-username" placeholder="Choose a username" autocomplete="username" />
+            </div>
+            <div class="input-group">
+              <span class="input-icon">🔒</span>
+              <input id="reg-password" placeholder="Create a password" type="password" autocomplete="new-password" />
+            </div>
+            <button id="register-btn" class="btn-auth" type="button">Create Account →</button>
+            <p class="auth-switch">Already have an account? <a id="show-login">Sign in</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ADMIN DASHBOARD ─────────────────────────────────────────── -->
+    <div class="admin-screen hidden" id="admin-dashboard">
+      <aside class="sidebar admin-sidebar">
+        <div class="sidebar-brand">
+          <span class="brand-icon-sm">🛡️</span>
+          <span>Admin Panel</span>
+        </div>
+        <nav class="sidebar-nav">
+          <a class="nav-item active" data-admin-tab="users">👥 Users</a>
+          <a class="nav-item" data-admin-tab="stats">📊 Stats</a>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="user-pill" style="background:rgba(239,68,68,.15);color:#fca5a5;">🛡️ Administrator</div>
+          <button id="admin-logout-btn" class="btn-logout-side" type="button">⏻ Logout</button>
+        </div>
+      </aside>
+
+      <!-- Admin Mobile Top Header -->
+      <header class="mobile-header admin-mobile-header" id="admin-mobile-header">
+        <div class="mobile-brand">🛡️ Admin Panel</div>
+        <button id="admin-mobile-logout-btn" class="mobile-logout-btn" type="button">⏻</button>
+      </header>
+
+      <main class="main-content">
+
+        <!-- ── ADMIN TAB: USERS ── -->
+        <div class="tab-panel active" id="admin-tab-users">
+          <div class="page-header">
+            <div>
+              <h2 class="page-title">User Management</h2>
+              <p class="page-sub">Manage all registered users</p>
+            </div>
+            <div class="header-actions">
+              <button id="admin-refresh" class="btn-pro btn-outline" type="button">🔄 Refresh</button>
+            </div>
+          </div>
+
+          <!-- Summary cards -->
+          <div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px;">
+            <div class="stat-card-pro budget-card">
+              <div class="stat-icon">👥</div>
+              <div class="stat-info">
+                <div class="stat-label-pro">Total Users</div>
+                <div class="stat-val-pro"><span id="admin-total-users">0</span></div>
+              </div>
+            </div>
+            <div class="stat-card-pro spent-card">
+              <div class="stat-icon">📝</div>
+              <div class="stat-info">
+                <div class="stat-label-pro">Total Expenses</div>
+                <div class="stat-val-pro"><span id="admin-total-expenses">0</span></div>
+              </div>
+            </div>
+            <div class="stat-card-pro remaining-card">
+              <div class="stat-icon">💰</div>
+              <div class="stat-info">
+                <div class="stat-label-pro">Total Spent</div>
+                <div class="stat-val-pro">₹<span id="admin-total-spent">0</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Users Table -->
+          <div class="panel">
+            <div class="panel-header">
+              <h3 class="panel-title">👥 All Users</h3>
+              <span class="panel-badge" id="admin-user-count">0 users</span>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table" id="admin-users-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Username</th>
+                    <th>Expenses</th>
+                    <th>Total Spent</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-users-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── ADMIN TAB: STATS ── -->
+        <div class="tab-panel" id="admin-tab-stats">
+          <div class="page-header">
+            <div>
+              <h2 class="page-title">System Stats</h2>
+              <p class="page-sub">Overview of all user activity</p>
+            </div>
+          </div>
+          <div id="admin-stats-list" class="admin-stats-list"></div>
+        </div>
+
+      </main>
+
+      <!-- Admin Mobile Bottom Nav -->
+      <nav class="mobile-bottom-nav admin-mobile-bottom-nav" id="admin-mobile-bottom-nav">
+        <a class="mob-nav-item active" data-admin-tab="users">
+          <span class="mob-nav-icon">👥</span>
+          <span class="mob-nav-label">Users</span>
+        </a>
+        <a class="mob-nav-item" data-admin-tab="stats">
+          <span class="mob-nav-icon">📊</span>
+          <span class="mob-nav-label">Stats</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- ── EDIT USER MODAL ─────────────────────────────────────────── -->
+    <div class="modal-overlay hidden" id="edit-user-modal">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3 class="modal-title" id="modal-edit-title">Edit User</h3>
+          <button class="modal-close" id="modal-close-btn" type="button">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-user-tag" id="modal-current-user"></p>
+
+          <!-- Change Username -->
+          <div class="modal-section">
+            <h4 class="modal-section-title">✏️ Change Username</h4>
+            <div class="field-wrap">
+              <label class="field-label">New Username</label>
+              <input id="modal-new-username" type="text" class="field-input" placeholder="Enter new username" />
+            </div>
+            <button id="modal-save-username" class="btn-pro btn-indigo" type="button" style="margin-top:10px;">Save
+              Username</button>
+          </div>
+
+          <div class="modal-divider"></div>
+
+          <!-- Change Password -->
+          <div class="modal-section">
+            <h4 class="modal-section-title">🔒 Change Password</h4>
+            <div class="field-wrap">
+              <label class="field-label">New Password</label>
+              <input id="modal-new-password" type="password" class="field-input" placeholder="Enter new password" />
+            </div>
+            <div class="field-wrap" style="margin-top:10px;">
+              <label class="field-label">Confirm Password</label>
+              <input id="modal-confirm-password" type="password" class="field-input"
+                placeholder="Confirm new password" />
+            </div>
+            <button id="modal-save-password" class="btn-pro btn-green" type="button" style="margin-top:10px;">Save
+              Password</button>
+          </div>
+
+          <div class="modal-divider"></div>
+
+          <!-- Danger -->
+          <div class="modal-section">
+            <h4 class="modal-section-title" style="color:#ef4444;">⚠️ Danger Zone</h4>
+            <button id="modal-delete-user" class="btn-pro btn-red" type="button">🗑️ Delete This User</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- ── DASHBOARD ───────────────────────────────────────────── -->
+    <div class="dashboard hidden" id="dashboard">
+
+      <!-- Sidebar (desktop only) -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <span class="brand-icon-sm">💸</span>
+          <span>SpendWise</span>
+        </div>
+        <nav class="sidebar-nav">
+          <a class="nav-item active" data-tab="overview">📊 Overview</a>
+          <a class="nav-item" data-tab="expenses">📝 Expenses</a>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="user-pill" id="greet">Hi, User</div>
+          <button id="logout-btn" class="btn-logout-side" type="button">⏻ Logout</button>
+        </div>
+      </aside>
+
+      <!-- Mobile Top Header -->
+      <header class="mobile-header" id="mobile-header">
+        <div class="mobile-brand">💸 SpendWise</div>
+        <div class="mobile-header-right">
+          <span class="mobile-greet" id="mobile-greet">Hi, User</span>
+          <button id="mobile-logout-btn" class="mobile-logout-btn" type="button">⏻</button>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="main-content">
+
+        <!-- ── TAB: OVERVIEW ── -->
+        <div class="tab-panel active" id="tab-overview">
+          <div class="page-header">
+            <div>
+              <h2 class="page-title">Overview</h2>
+              <p class="page-sub" id="today-label">Loading...</p>
+            </div>
+          </div>
+
+          <!-- Stat Cards -->
+          <div class="stats-row">
+            <div class="stat-card-pro budget-card">
+              <div class="stat-icon">💰</div>
+              <div class="stat-info">
+                <div class="stat-label-pro">Budget</div>
+                <div class="stat-val-pro">₹<span id="budget-val">0.00</span></div>
+              </div>
+            </div>
+            <div class="stat-card-pro spent-card">
+              <div class="stat-icon">🛒</div>
+              <div class="stat-info">
+                <div class="stat-label-pro">Spent</div>
+                <div class="stat-val-pro">₹<span id="spent-val">0.00</span></div>
+              </div>
+            </div>
+            <div class="stat-card-pro remaining-card">
+              <div class="stat-icon">🏦</div>
+              <div class="stat-info">
+                <div class="stat-label-pro">Remaining</div>
+                <div class="stat-val-pro">₹<span id="remaining-val">0.00</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Two-column: Forms left | Calculator right -->
+          <div class="overview-cols">
+
+            <!-- LEFT: Budget + Add Expense -->
+            <div class="overview-left">
+
+              <!-- Budget Manager (compact) -->
+              <div class="panel">
+                <div class="panel-header">
+                  <h3 class="panel-title">💰 Budget Manager</h3>
+                  <span class="panel-badge">Date-wise</span>
+                </div>
+                <div class="compact-form-row">
+                  <div class="field-wrap">
+                    <label class="field-label">Date</label>
+                    <input id="budget-date" type="date" class="field-input" />
+                  </div>
+                  <div class="field-wrap">
+                    <label class="field-label">Amount (₹)</label>
+                    <input id="budget-input" type="number" placeholder="e.g. 500" class="field-input" />
+                  </div>
+                  <div class="field-wrap field-actions">
+                    <label class="field-label">&nbsp;</label>
+                    <div class="btn-row">
+                      <button id="set-budget" class="btn-pro btn-indigo" type="button">＋ Add</button>
+                      <button id="reset-budget" class="btn-pro btn-amber" type="button">✕</button>
+                    </div>
+                  </div>
+                </div>
+                <div id="budget-existing-hint" class="budget-hint"></div>
+              </div>
+
+              <!-- Add Expense (compact) -->
+              <div class="panel">
+                <div class="panel-header">
+                  <h3 class="panel-title">➕ Add Expense</h3>
+                </div>
+                <div class="compact-form-row">
+                  <div class="field-wrap">
+                    <label class="field-label">Date</label>
+                    <input id="exp-date" type="date" class="field-input" />
+                  </div>
+                  <div class="field-wrap flex2">
+                    <label class="field-label">Description</label>
+                    <input id="exp-desc" type="text" placeholder="What did you spend on?" maxlength="60"
+                      class="field-input" />
+                  </div>
+                  <div class="field-wrap">
+                    <label class="field-label">Amount (₹)</label>
+                    <input id="exp-amt" type="number" placeholder="0.00" class="field-input" />
+                  </div>
+                  <div class="field-wrap field-actions">
+                    <label class="field-label">&nbsp;</label>
+                    <button id="add-expense" class="btn-pro btn-green" type="button" style="width:100%;">＋ Add</button>
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- /overview-left -->
+
+            <!-- RIGHT: Calculator -->
+            <div class="overview-right">
+              <div class="panel calc-panel">
+                <div class="panel-header">
+                  <h3 class="panel-title">🧮 Calculator</h3>
+                  <span class="panel-badge">Keyboard ready</span>
+                </div>
+                <div class="calc-pro" id="calc-container">
+                  <div class="calc-display-pro" id="calc-display">0</div>
+                  <div class="calc-grid">
+                    <button class="calc-btn-pro fn" id="calc-clear" type="button">AC</button>
+                    <button class="calc-btn-pro fn" id="calc-backspace" type="button">⌫</button>
+                    <button class="calc-btn-pro fn" data-value="%" type="button">%</button>
+                    <button class="calc-btn-pro op" data-value="/" type="button">÷</button>
+
+                    <button class="calc-btn-pro num" data-value="7" type="button">7</button>
+                    <button class="calc-btn-pro num" data-value="8" type="button">8</button>
+                    <button class="calc-btn-pro num" data-value="9" type="button">9</button>
+                    <button class="calc-btn-pro op" data-value="*" type="button">×</button>
+
+                    <button class="calc-btn-pro num" data-value="4" type="button">4</button>
+                    <button class="calc-btn-pro num" data-value="5" type="button">5</button>
+                    <button class="calc-btn-pro num" data-value="6" type="button">6</button>
+                    <button class="calc-btn-pro op" data-value="-" type="button">−</button>
+
+                    <button class="calc-btn-pro num" data-value="1" type="button">1</button>
+                    <button class="calc-btn-pro num" data-value="2" type="button">2</button>
+                    <button class="calc-btn-pro num" data-value="3" type="button">3</button>
+                    <button class="calc-btn-pro op" data-value="+" type="button">+</button>
+
+                    <button class="calc-btn-pro num span2" data-value="0" type="button">0</button>
+                    <button class="calc-btn-pro num" data-value="." type="button">.</button>
+                    <button class="calc-btn-pro eq" id="calc-equal" type="button">=</button>
+                  </div>
+                </div>
+              </div>
+            </div><!-- /overview-right -->
+
+          </div><!-- /overview-cols -->
+        </div><!-- /tab-overview -->
+
+        <!-- ── TAB: EXPENSES ── -->
+        <div class="tab-panel" id="tab-expenses">
+          <div class="page-header">
+            <div>
+              <h2 class="page-title">Expenses</h2>
+              <p class="page-sub">View and manage all your expenses</p>
+            </div>
+            <div class="header-actions">
+              <button id="print-bill" class="btn-pro btn-outline" type="button">🖨️ Print</button>
+              <button id="download-pdf" class="btn-pro btn-outline" type="button">📄 PDF</button>
+              <button id="download-csv" class="btn-pro btn-outline" type="button">📊 CSV</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="filter-bar">
+              <div class="field-wrap" style="flex:0 0 200px;">
+                <label class="field-label">Filter by Date</label>
+                <input id="filter-date" type="date" class="field-input" />
+              </div>
+              <div class="field-wrap" style="align-self:flex-end;">
+                <button id="filter-clear" class="btn-pro btn-outline" type="button">Show All</button>
+              </div>
+            </div>
+            <ul id="expenses-list" class="expenses-list"></ul>
+            <!-- Total row -->
+            <div class="expenses-total" id="expenses-total-row">
+              <span class="total-label">Total</span>
+              <span class="total-val">₹<span id="expenses-total-val">0.00</span></span>
+            </div>
+          </div>
+
+          <div class="panel danger-zone">
+            <h3 class="panel-title" style="color:#ef4444;">⚠️ Danger Zone</h3>
+            <div class="btn-row" style="margin-top:12px;">
+              <button id="reset-today" class="btn-pro btn-amber" type="button">🔄 Reset Today</button>
+              <button id="clear-data" class="btn-pro btn-red" type="button">🗑️ Clear All Data</button>
+            </div>
+          </div>
+        </div>
+
+      </main>
+
+      <!-- Mobile Bottom Nav (user) -->
+      <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+        <a class="mob-nav-item active" data-tab="overview">
+          <span class="mob-nav-icon">📊</span>
+          <span class="mob-nav-label">Overview</span>
+        </a>
+        <a class="mob-nav-item" data-tab="expenses">
+          <span class="mob-nav-icon">📝</span>
+          <span class="mob-nav-label">Expenses</span>
+        </a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Firebase SDK (compat mode — works with plain JS, no bundler needed) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>
