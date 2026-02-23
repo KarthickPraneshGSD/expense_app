@@ -135,27 +135,31 @@ async function registerUser() {
     let oldUid = null;
 
     if (snap.exists) {
-      // Username exists — check if Firebase Auth account is still alive
-      oldUid = snap.data().uid;
-      try {
-        await auth.signInWithEmailAndPassword(fbEmail, '___probe___');
-        // If we somehow get here, the account exists — username truly taken
-        notify('Username already taken — please choose a different one', 'error');
-        return;
-      } catch (probeErr) {
-        if (probeErr.code === 'auth/user-not-found') {
-          // ✅ Auth account was deleted (admin reset) — allow re-registration + migrate data
-          notify('⏳ Restoring your account and migrating data...', 'info');
-        } else if (probeErr.code === 'auth/wrong-password' ||
-          probeErr.code === 'auth/invalid-credential' ||
-          probeErr.code === 'auth/invalid-login-credentials') {
-          // Account EXISTS in Firebase Auth → username taken
+      // Username exists — check for pendingReset flag or probe auth
+      const data = snap.data();
+      oldUid = data.uid;
+
+      if (data.pendingReset === true) {
+        // ✅ Reset authorized by admin
+        notify('⏳ Restoring your account and migrating data...', 'info');
+      } else {
+        // Fallback to probe (optional, but keep it for robustness)
+        try {
+          await auth.signInWithEmailAndPassword(fbEmail, '___probe___');
           notify('Username already taken — please choose a different one', 'error');
           return;
-        } else {
-          // Unknown error — treat username as taken to be safe
-          notify('Username already taken — please choose a different one', 'error');
-          return;
+        } catch (probeErr) {
+          if (probeErr.code === 'auth/user-not-found') {
+            notify('⏳ Restoring your account and migrating data...', 'info');
+          } else if (probeErr.code === 'auth/wrong-password' ||
+            probeErr.code === 'auth/invalid-credential' ||
+            probeErr.code === 'auth/invalid-login-credentials') {
+            notify('Username already taken — please choose a different one', 'error');
+            return;
+          } else {
+            notify('Username already taken — please choose a different one', 'error');
+            return;
+          }
         }
       }
     }
@@ -167,6 +171,8 @@ async function registerUser() {
     if (oldUid && oldUid !== newUid) {
       // ── DATA MIGRATION: move all expenses & budgets from oldUid → newUid ──
       await migrateUserData(oldUid, newUid, username, realEmail);
+      // Clear flag after successful migration
+      await db.collection('usernames').doc(username).update({ pendingReset: firebase.firestore.FieldValue.delete() });
       notify('✅ Account restored! All your data has been migrated successfully.', 'success');
     } else {
       // ── Fresh registration ──
@@ -908,6 +914,13 @@ async function openEditModal(uid, username) {
     if (realEmailEl) realEmailEl.textContent = '—';
   }
 
+  // Reset Authorize Reset button state
+  const authResetBtn = document.getElementById('modal-authorize-reset');
+  if (authResetBtn) {
+    authResetBtn.textContent = '🚀 Authorize Reset & Migration';
+    authResetBtn.disabled = false;
+  }
+
   show(modal);
 }
 
@@ -1264,6 +1277,26 @@ Thank you!`);
     } finally {
       modalSaveRealEmail.textContent = '💾 Save Email';
       modalSaveRealEmail.disabled = false;
+    }
+  });
+
+  // ── Admin Authorize Reset button ──
+  const modalAuthReset = document.getElementById('modal-authorize-reset');
+  if (modalAuthReset) modalAuthReset.addEventListener('click', async () => {
+    if (!_editingUsername) return;
+    try {
+      modalAuthReset.textContent = 'Authorizing…';
+      modalAuthReset.disabled = true;
+      await db.collection('usernames').doc(_editingUsername).update({
+        pendingReset: true,
+        resetAuthorizedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      notify('✅ Reset authorized! User can now re-register with this username.', 'success');
+      modalAuthReset.textContent = '✅ Authorized';
+    } catch (err) {
+      notify('Error authorizing reset: ' + err.message, 'error');
+      modalAuthReset.textContent = '🚀 Authorize Reset & Migration';
+      modalAuthReset.disabled = false;
     }
   });
 
