@@ -367,21 +367,28 @@
             <div class="stat-card-pro budget-card">
               <div class="stat-icon">💰</div>
               <div class="stat-info">
-                <div class="stat-label-pro">Budget</div>
+                <div class="stat-label-pro">Daily Budget</div>
                 <div class="stat-val-pro">₹<span id="budget-val">0.00</span></div>
+              </div>
+            </div>
+            <div class="stat-card-pro income-card" style="background:#f0fdf4;border-color:#bbf7d0;">
+              <div class="stat-icon">📈</div>
+              <div class="stat-info">
+                <div class="stat-label-pro" style="color:#166534;">Total Income</div>
+                <div class="stat-val-pro" style="color:#15803d;">₹<span id="income-val">0.00</span></div>
               </div>
             </div>
             <div class="stat-card-pro spent-card">
               <div class="stat-icon">🛒</div>
               <div class="stat-info">
-                <div class="stat-label-pro">Spent</div>
+                <div class="stat-label-pro">Total Spent</div>
                 <div class="stat-val-pro">₹<span id="spent-val">0.00</span></div>
               </div>
             </div>
             <div class="stat-card-pro remaining-card">
               <div class="stat-icon">🏦</div>
               <div class="stat-info">
-                <div class="stat-label-pro">Remaining</div>
+                <div class="stat-label-pro">Balance</div>
                 <div class="stat-val-pro">₹<span id="remaining-val">0.00</span></div>
               </div>
             </div>
@@ -441,6 +448,32 @@
                   <div class="field-wrap field-actions">
                     <label class="field-label">&nbsp;</label>
                     <button id="add-expense" class="btn-pro btn-green" type="button" style="width:100%;">＋ Add</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Income Manager (compact) -->
+              <div class="panel">
+                <div class="panel-header">
+                  <h3 class="panel-title">💵 Income Manager</h3>
+                </div>
+                <div class="compact-form-row">
+                  <div class="field-wrap">
+                    <label class="field-label">Date</label>
+                    <input id="inc-date" type="date" class="field-input" />
+                  </div>
+                  <div class="field-wrap flex2">
+                    <label class="field-label">Source</label>
+                    <input id="inc-desc" type="text" placeholder="Salary, Bonus, etc." maxlength="60"
+                      class="field-input" />
+                  </div>
+                  <div class="field-wrap">
+                    <label class="field-label">Amount (₹)</label>
+                    <input id="inc-amt" type="number" placeholder="0.00" class="field-input" />
+                  </div>
+                  <div class="field-wrap field-actions">
+                    <label class="field-label">&nbsp;</label>
+                    <button id="add-income" class="btn-pro btn-indigo" type="button" style="width:100%;">＋ Add</button>
                   </div>
                 </div>
               </div>
@@ -523,6 +556,11 @@
               <span class="total-label">Total</span>
               <span class="total-val">₹<span id="expenses-total-val">0.00</span></span>
             </div>
+          </div>
+
+          <div class="panel danger-zone">
+            <h3 class="panel-title" style="color:var(--indigo);">📈 Income History</h3>
+            <ul id="income-list" class="income-list" style="margin-top:12px;"></ul>
           </div>
 
           <div class="panel danger-zone">

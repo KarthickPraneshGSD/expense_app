@@ -46,11 +46,14 @@ let _expenses = [];          // local cache: array of { id, desc, amt, date, cre
 let _budgets = {};          // local cache: { 'YYYY-MM-DD': amount }
 let _unsubExpenses = null;        // Firestore real-time listener cleanup
 let _unsubBudgets = null;
+let _income = [];           // local cache: array of { id, desc, amt, date, createdAt }
+let _unsubIncome = null;
 
 // ─── Shortcuts ──────────────────────────────────────────────────────────────
 const userRef = (uid) => db.collection('users').doc(uid);
 const expsRef = (uid) => userRef(uid).collection('expenses');
 const budgRef = (uid) => userRef(uid).collection('budgets');
+const incRef = (uid) => userRef(uid).collection('income');
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  ROLE TOGGLE
@@ -420,11 +423,24 @@ function startUserListeners(uid) {
       console.error('Budgets listener error:', err);
       notify('Error loading budgets: ' + err.message, 'error');
     });
+
+  // ── Income listener ──
+  _unsubIncome = incRef(uid)
+    .orderBy('date', 'desc')
+    .onSnapshot(snap => {
+      _income = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      updateSummary();
+      renderIncomeList();
+    }, err => {
+      console.error('Income listener error:', err);
+      notify('Error loading income: ' + err.message, 'error');
+    });
 }
 
 function stopUserListeners() {
   if (_unsubExpenses) { _unsubExpenses(); _unsubExpenses = null; }
   if (_unsubBudgets) { _unsubBudgets(); _unsubBudgets = null; }
+  if (_unsubIncome) { _unsubIncome(); _unsubIncome = null; }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -595,17 +611,88 @@ function updateSummary() {
   const budgetDateInput = document.getElementById('budget-date');
   const selectedDate = (budgetDateInput && budgetDateInput.value) ? budgetDateInput.value : todayStr();
 
+  // Daily Stats (Date-specific)
   const bud = _budgets[selectedDate] || 0;
-  const spent = (_expenses || [])
-    .filter(e => e.date === selectedDate)
-    .reduce((s, e) => s + (e.amt || 0), 0);
+
+  // Global Stats
+  const totalIncome = (_income || []).reduce((s, i) => s + (i.amt || 0), 0);
+  const totalSpent = (_expenses || []).reduce((s, e) => s + (e.amt || 0), 0);
+  const balance = totalIncome - totalSpent;
 
   const budEl = document.getElementById('budget-val');
+  const incEl = document.getElementById('income-val');
   const spentEl = document.getElementById('spent-val');
   const remEl = document.getElementById('remaining-val');
+
   if (budEl) budEl.textContent = bud.toFixed(2);
-  if (spentEl) spentEl.textContent = spent.toFixed(2);
-  if (remEl) remEl.textContent = (bud - spent).toFixed(2);
+  if (incEl) incEl.textContent = totalIncome.toFixed(2);
+  if (spentEl) spentEl.textContent = totalSpent.toFixed(2);
+  if (remEl) {
+    remEl.textContent = balance.toFixed(2);
+    remEl.parentElement.style.color = balance < 0 ? '#ef4444' : '#1e293b';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  INCOME  (each income = one Firestore doc: users/{uid}/income/{id})
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function addIncome() {
+  const incDateInput = document.getElementById('inc-date');
+  const date = (incDateInput && incDateInput.value) ? incDateInput.value : todayStr();
+  const desc = document.getElementById('inc-desc').value.trim();
+  const amt = parseFloat(document.getElementById('inc-amt').value);
+
+  if (!desc) return notify('Enter a source (e.g. Salary)', 'error');
+  if (isNaN(amt) || amt <= 0) return notify('Enter a valid amount', 'error');
+
+  try {
+    await incRef(_currentUID).add({
+      desc,
+      amt,
+      date,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('inc-desc').value = '';
+    document.getElementById('inc-amt').value = '';
+    notify('Income added for ' + date, 'success');
+  } catch (err) {
+    notify('Error adding income: ' + err.message, 'error');
+  }
+}
+
+function renderIncomeList() {
+  const list = document.getElementById('income-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  const items = _income || [];
+  if (items.length === 0) {
+    list.innerHTML = '<li style="text-align:center;color:#64748b;padding:20px;border:none;background:transparent;">No income history yet</li>';
+    return;
+  }
+
+  items.forEach(it => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div>
+        <div><strong>${it.desc}</strong></div>
+        <div class="income-meta">${it.date} &bull; &#8377;${(it.amt || 0).toFixed(2)}</div>
+      </div>
+      <div><button data-id="${it.id}">Delete</button></div>`;
+    list.appendChild(li);
+    li.querySelector('button').addEventListener('click', () => deleteIncome(it.id));
+  });
+}
+
+async function deleteIncome(id) {
+  if (!confirm('Delete this income record?')) return;
+  try {
+    await incRef(_currentUID).doc(id).delete();
+    notify('Deleted', 'success');
+  } catch (err) {
+    notify('Error: ' + err.message, 'error');
+  }
 }
 
 async function clearData() {
@@ -1332,6 +1419,12 @@ Thank you!`);
   }
   const expDateInput = document.getElementById('exp-date');
   if (expDateInput) expDateInput.value = today;
+
+  const incDateInput = document.getElementById('inc-date');
+  if (incDateInput) incDateInput.value = today;
+
+  const addIncBtn = document.getElementById('add-income');
+  if (addIncBtn) addIncBtn.addEventListener('click', addIncome);
 
   const filterDateInput = document.getElementById('filter-date');
   const filterTodayBtn = document.getElementById('filter-today');
