@@ -598,6 +598,7 @@ function renderExpenses() {
 }
 
 async function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
   try {
     await expsRef(_currentUID).doc(id).delete();
     notify('Deleted', 'success');
