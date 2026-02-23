@@ -58,6 +58,7 @@
             </div>
             <button id="login-btn" class="btn-auth" type="button">Sign In →</button>
             <p class="auth-switch" id="register-link">Don't have an account? <a id="show-register">Create one</a></p>
+            <p class="auth-switch" style="margin-top:6px;"><a id="show-forgot">🔑 Forgot Password?</a></p>
           </div>
           <!-- Register Form -->
           <div class="auth-form hidden" id="register-form">
@@ -72,6 +73,38 @@
             <button id="register-btn" class="btn-auth" type="button">Create Account →</button>
             <p class="auth-switch">Already have an account? <a id="show-login">Sign in</a></p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── FORGOT PASSWORD MODAL ──────────────────────────────────────── -->
+    <div class="modal-overlay hidden" id="forgot-modal">
+      <div class="modal-box" style="max-width:420px;">
+        <div class="modal-header">
+          <h3 class="modal-title">🔑 Forgot Password?</h3>
+          <button class="modal-close" id="forgot-modal-close" type="button">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="forgot-info-box">
+            <span class="forgot-info-icon">ℹ️</span>
+            <p>Passwords can only be reset by your <strong>Administrator</strong>. Please contact them and share your
+              username below.</p>
+          </div>
+          <div class="field-wrap" style="margin-top:16px;">
+            <label class="field-label">Your Username</label>
+            <input id="forgot-username" type="text" class="field-input" placeholder="Enter your username" />
+          </div>
+          <div class="forgot-steps" style="margin-top:16px;">
+            <p class="forgot-step-title">📋 What to tell your Admin:</p>
+            <ol class="reset-steps">
+              <li>Your <strong>username</strong> (enter above)</li>
+              <li>Ask them to go to <strong>Admin Panel → Edit User → Set New Password</strong></li>
+              <li>They will give you a temporary password</li>
+              <li>Login and go to <strong>Settings → Change Password</strong></li>
+            </ol>
+          </div>
+          <button id="forgot-copy-btn" class="btn-pro btn-indigo" type="button"
+            style="width:100%;margin-top:16px;justify-content:center;">📋 Copy Username to Clipboard</button>
         </div>
       </div>
     </div>
@@ -210,27 +243,37 @@
 
           <div class="modal-divider"></div>
 
-          <!-- Reset Password (Admin Guide) -->
+          <!-- Reset Password (Admin Direct Set) -->
           <div class="modal-section">
-            <h4 class="modal-section-title">� Reset Password</h4>
-            <div class="reset-guide">
-              <p class="reset-guide-text">
-                This user's Firebase login email is:
-              </p>
+            <h4 class="modal-section-title">🔑 Set New Password</h4>
+            <p class="reset-guide-text" style="margin-bottom:10px;">Firebase email for this user:</p>
+            <div class="reset-email-row">
               <div class="reset-email-box" id="modal-user-email">—</div>
-              <p class="reset-guide-text" style="margin-top:10px;">
-                <strong>Steps to reset their password:</strong>
-              </p>
+              <button id="modal-copy-email" class="btn-pro btn-outline" type="button"
+                style="height:38px;padding:0 12px;font-size:12px;">📋 Copy</button>
+            </div>
+            <div class="field-wrap" style="margin-top:14px;">
+              <label class="field-label">New Password for User</label>
+              <input id="modal-new-password" type="text" class="field-input"
+                placeholder="Min. 6 characters (e.g. TempPass@123)" />
+            </div>
+            <div class="admin-reset-actions" style="margin-top:10px;">
+              <button id="modal-set-password" class="btn-pro btn-green" type="button">🔑 Set Password via Firebase
+                Console</button>
+            </div>
+            <div id="modal-reset-guide" class="reset-guide-box" style="display:none;margin-top:14px;">
+              <p class="reset-guide-title">📋 Steps to set this password in Firebase:</p>
               <ol class="reset-steps">
-                <li>Click the button below to open Firebase Console</li>
-                <li>Find the email shown above in the users list</li>
-                <li>Click the <strong>⋮ menu</strong> → <strong>Reset password</strong></li>
-                <li>Copy the reset link and share a new password directly with the user</li>
+                <li>Click <strong>"Open Firebase Console"</strong> below</li>
+                <li>Find <strong id="guide-email-highlight"></strong> in the list</li>
+                <li>Click the <strong>⋮ menu → Edit user</strong></li>
+                <li>In the Password field, enter: <strong id="guide-password-highlight" class="highlight-pass"></strong>
+                </li>
+                <li>Click <strong>Save</strong> ✅</li>
               </ol>
-              <a id="modal-firebase-link"
-                href="https://console.firebase.google.com/project/spendwise-8b6fb/authentication/users" target="_blank"
+              <a href="https://console.firebase.google.com/project/spendwise-8b6fb/authentication/users" target="_blank"
                 rel="noopener" class="btn-pro btn-indigo"
-                style="margin-top:12px;text-decoration:none;display:inline-flex;">
+                style="margin-top:12px;text-decoration:none;display:inline-flex;justify-content:center;width:100%;">
                 🔗 Open Firebase Console
               </a>
             </div>

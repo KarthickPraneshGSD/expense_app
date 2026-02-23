@@ -791,6 +791,10 @@ function openEditModal(uid, username) {
 
 function closeEditModal() {
   _editingUID = null; _editingUsername = null;
+  const pwInput = document.getElementById('modal-new-password');
+  if (pwInput) pwInput.value = '';
+  const guideBox = document.getElementById('modal-reset-guide');
+  if (guideBox) { guideBox.style.display = 'none'; guideBox.classList.remove('visible'); }
   hide(document.getElementById('edit-user-modal'));
 }
 
@@ -961,6 +965,26 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('auth-subtitle').textContent = 'Sign in to your account';
   });
 
+  // ── Forgot Password Modal ──
+  const showForgot = document.getElementById('show-forgot');
+  const forgotModal = document.getElementById('forgot-modal');
+  const forgotModalClose = document.getElementById('forgot-modal-close');
+  const forgotCopyBtn = document.getElementById('forgot-copy-btn');
+
+  if (showForgot) showForgot.addEventListener('click', () => {
+    document.getElementById('forgot-username').value = document.getElementById('login-username').value.trim();
+    show(forgotModal);
+  });
+  if (forgotModalClose) forgotModalClose.addEventListener('click', () => hide(forgotModal));
+  if (forgotModal) forgotModal.addEventListener('click', e => { if (e.target === forgotModal) hide(forgotModal); });
+  if (forgotCopyBtn) forgotCopyBtn.addEventListener('click', () => {
+    const uname = document.getElementById('forgot-username').value.trim();
+    if (!uname) { notify('Enter your username first', 'error'); return; }
+    navigator.clipboard.writeText(uname).then(() => {
+      notify('Username copied! Share it with your admin 👍', 'success');
+    }).catch(() => notify('Copy failed — please copy manually', 'error'));
+  });
+
   // ── Login / Register ──
   const loginBtn = document.getElementById('login-btn');
   const registerBtn = document.getElementById('register-btn');
@@ -1037,6 +1061,41 @@ document.addEventListener('DOMContentLoaded', function () {
   if (modalOverlay) modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeEditModal(); });
   if (modalSaveUsername) modalSaveUsername.addEventListener('click', adminChangeUsername);
   if (modalDeleteUser) modalDeleteUser.addEventListener('click', () => { if (_editingUID) adminDeleteUser(_editingUID, _editingUsername); });
+
+  // ── Admin Copy Email button ──
+  const modalCopyEmail = document.getElementById('modal-copy-email');
+  if (modalCopyEmail) modalCopyEmail.addEventListener('click', () => {
+    const email = document.getElementById('modal-user-email').textContent.trim();
+    navigator.clipboard.writeText(email).then(() => {
+      notify('Email copied to clipboard!', 'success');
+      modalCopyEmail.textContent = '✅ Copied!';
+      setTimeout(() => { modalCopyEmail.textContent = '📋 Copy'; }, 2000);
+    }).catch(() => notify('Copy failed', 'error'));
+  });
+
+  // ── Admin Set Password button — shows step-by-step guide ──
+  const modalSetPassword = document.getElementById('modal-set-password');
+  if (modalSetPassword) modalSetPassword.addEventListener('click', () => {
+    const newPw = document.getElementById('modal-new-password').value.trim();
+    const email = document.getElementById('modal-user-email').textContent.trim();
+    if (!newPw) { notify('Enter a new password first', 'error'); return; }
+    if (newPw.length < 6) { notify('Password must be at least 6 characters', 'error'); return; }
+
+    // Populate the step-by-step guide with exact values
+    const guideEmail = document.getElementById('guide-email-highlight');
+    const guidePass = document.getElementById('guide-password-highlight');
+    if (guideEmail) guideEmail.textContent = email;
+    if (guidePass) guidePass.textContent = newPw;
+
+    // Show the guide box
+    const guideBox = document.getElementById('modal-reset-guide');
+    if (guideBox) { guideBox.style.display = 'block'; guideBox.classList.add('visible'); }
+
+    // Also copy password to clipboard for convenience
+    navigator.clipboard.writeText(newPw).then(() => {
+      notify('📋 Password copied to clipboard! Paste it in Firebase Console.', 'success');
+    }).catch(() => { });
+  });
 
   // ── User Tab Navigation (desktop + mobile) ──
   function switchUserTab(tab) {
