@@ -126,32 +126,63 @@ async function registerUser() {
   if (password.length < 6) return notify('Password must be at least 6 characters', 'error');
   if (!/^[a-zA-Z0-9_]+$/.test(username)) return notify('Username: only letters, numbers, underscores', 'error');
 
-  setLoading('register-btn', true, 'Create Account');
+  setLoading('register-btn', true, 'Create Account →');
   try {
-    // Check username uniqueness
+    const fbEmail = username.toLowerCase() + '@spendwise.internal';
+
+    // Check if username exists in Firestore
     const snap = await db.collection('usernames').doc(username).get();
+    let oldUid = null;
+
     if (snap.exists) {
-      notify('Username already taken', 'error');
-      return;
+      // Username exists — check if Firebase Auth account is still alive
+      oldUid = snap.data().uid;
+      try {
+        await auth.signInWithEmailAndPassword(fbEmail, '___probe___');
+        // If we somehow get here, the account exists — username truly taken
+        notify('Username already taken — please choose a different one', 'error');
+        return;
+      } catch (probeErr) {
+        if (probeErr.code === 'auth/user-not-found') {
+          // ✅ Auth account was deleted (admin reset) — allow re-registration + migrate data
+          notify('⏳ Restoring your account and migrating data...', 'info');
+        } else if (probeErr.code === 'auth/wrong-password' ||
+          probeErr.code === 'auth/invalid-credential' ||
+          probeErr.code === 'auth/invalid-login-credentials') {
+          // Account EXISTS in Firebase Auth → username taken
+          notify('Username already taken — please choose a different one', 'error');
+          return;
+        } else {
+          // Unknown error — treat username as taken to be safe
+          notify('Username already taken — please choose a different one', 'error');
+          return;
+        }
+      }
     }
 
-    // Firebase Auth (use synthetic email)
-    const email = username.toLowerCase() + '@spendwise.internal';
-    const cred = await auth.createUserWithEmailAndPassword(email, password);
-    const uid = cred.user.uid;
+    // Create new Firebase Auth account
+    const cred = await auth.createUserWithEmailAndPassword(fbEmail, password);
+    const newUid = cred.user.uid;
 
-    // Write profile + username mapping atomically (include real email)
-    const batch = db.batch();
-    batch.set(db.collection('usernames').doc(username), { uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-    batch.set(userRef(uid), { username, realEmail, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-    await batch.commit();
+    if (oldUid && oldUid !== newUid) {
+      // ── DATA MIGRATION: move all expenses & budgets from oldUid → newUid ──
+      await migrateUserData(oldUid, newUid, username, realEmail);
+      notify('✅ Account restored! All your data has been migrated successfully.', 'success');
+    } else {
+      // ── Fresh registration ──
+      const batch = db.batch();
+      batch.set(db.collection('usernames').doc(username), { uid: newUid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      batch.set(userRef(newUid), { username, realEmail, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      await batch.commit();
+      notify('Account created! Please log in.', 'success');
+    }
 
     document.getElementById('reg-username').value = '';
     document.getElementById('reg-email').value = '';
     document.getElementById('reg-password').value = '';
     hide(document.getElementById('register-form'));
     show(document.getElementById('login-form'));
-    notify('Account created! Please log in.', 'success');
+
   } catch (err) {
     const code = err.code || '';
     if (code === 'auth/email-already-in-use') {
@@ -162,9 +193,58 @@ async function registerUser() {
       notify('Error: ' + err.message, 'error');
     }
   } finally {
-    setLoading('register-btn', false, 'Create Account');
+    setLoading('register-btn', false, 'Create Account →');
   }
 }
+
+// ── Migrate all Firestore data from oldUid → newUid (called after admin resets auth account) ──
+async function migrateUserData(oldUid, newUid, username, realEmail) {
+  const [expsSnap, budgSnap] = await Promise.all([
+    expsRef(oldUid).get(),
+    budgRef(oldUid).get()
+  ]);
+
+  // Write new profile + update username mapping + copy all expenses + budgets
+  const BATCH_LIMIT = 490;
+  let batch = db.batch();
+  let count = 0;
+
+  const flush = async () => { await batch.commit(); batch = db.batch(); count = 0; };
+
+  // Profile + username mapping
+  batch.set(userRef(newUid), { username, realEmail, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+  batch.set(db.collection('usernames').doc(username), { uid: newUid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+  count += 2;
+
+  // Copy expenses
+  for (const doc of expsSnap.docs) {
+    if (count >= BATCH_LIMIT) await flush();
+    batch.set(expsRef(newUid).doc(doc.id), doc.data());
+    count++;
+  }
+
+  // Copy budgets
+  for (const doc of budgSnap.docs) {
+    if (count >= BATCH_LIMIT) await flush();
+    batch.set(budgRef(newUid).doc(doc.id), doc.data());
+    count++;
+  }
+
+  await flush();
+
+  // Clean up old documents in background (non-blocking)
+  try {
+    const cleanBatch = db.batch();
+    expsSnap.docs.forEach(d => cleanBatch.delete(d.ref));
+    budgSnap.docs.forEach(d => cleanBatch.delete(d.ref));
+    cleanBatch.delete(userRef(oldUid));
+    await cleanBatch.commit();
+  } catch (e) {
+    console.warn('Old data cleanup skipped (non-critical):', e.message);
+  }
+}
+
+
 
 async function loginUser() {
   const username = document.getElementById('login-username').value.trim();
