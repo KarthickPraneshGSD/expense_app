@@ -251,48 +251,52 @@
 
           <div class="modal-divider"></div>
 
-          <!-- Reset Password (Admin Direct Set) -->
+          <!-- Reset Password (Admin) -->
           <div class="modal-section">
-            <h4 class="modal-section-title">🔑 Set New Password</h4>
-            <p class="reset-guide-text" style="margin-bottom:6px;">User's real email (to send temp password):</p>
-            <div class="reset-email-row" style="margin-bottom:14px;">
+            <h4 class="modal-section-title">🔑 Reset Password</h4>
+
+            <!-- Real Email row with editable input -->
+            <p class="reset-guide-text" style="margin-bottom:6px;">User's real email:</p>
+            <div class="reset-email-row" style="margin-bottom:4px;">
               <div class="real-email-box" id="modal-real-email">—</div>
               <a id="modal-email-user" href="#" class="btn-pro btn-green"
-                style="height:38px;padding:0 12px;font-size:12px;text-decoration:none;white-space:nowrap;">📧 Email
-                User</a>
+                style="height:38px;padding:0 12px;font-size:12px;text-decoration:none;white-space:nowrap;pointer-events:none;opacity:.5;">📧
+                Email</a>
             </div>
-            <p class="reset-guide-text" style="margin-bottom:10px;">Firebase Auth email (for Firebase Console):</p>
+            <!-- Edit real email for existing users -->
+            <div style="display:flex;gap:8px;margin-bottom:14px;">
+              <input id="modal-edit-real-email" type="email" class="field-input" placeholder="Add/update real email…"
+                style="flex:1;height:36px;font-size:12px;" />
+              <button id="modal-save-real-email" class="btn-pro btn-outline" type="button"
+                style="height:36px;padding:0 12px;font-size:12px;white-space:nowrap;">� Save Email</button>
+            </div>
+
+            <!-- How to reset password box -->
+            <div class="reset-guide-box" style="display:block;">
+              <p class="reset-guide-title">📋 How to reset this user's password:</p>
+              <ol class="reset-steps">
+                <li>
+                  Go to Firebase Console and <strong>delete</strong> their auth account:<br />
+                  <a href="https://console.firebase.google.com/project/spendwise-8b6fb/authentication/users"
+                    target="_blank" rel="noopener" style="color:#6366f1;font-size:12px;">🔗 Open Firebase Console →</a>
+                </li>
+                <li>Find <strong id="guide-email-highlight" style="color:#6366f1;"></strong> → click <strong>⋮ → Delete
+                    account</strong></li>
+                <li>Tell the user to open the app and <strong>re-register with the same username</strong> and a new
+                  password</li>
+                <li>The app will <strong>automatically restore all their data</strong> ✅</li>
+              </ol>
+            </div>
+
+            <!-- Quick copy of Firebase email -->
+            <p class="reset-guide-text" style="margin-top:12px;margin-bottom:6px;">Firebase Auth email to search:</p>
             <div class="reset-email-row">
               <div class="reset-email-box" id="modal-user-email">—</div>
               <button id="modal-copy-email" class="btn-pro btn-outline" type="button"
-                style="height:38px;padding:0 12px;font-size:12px;">📋 Copy</button>
-            </div>
-            <div class="field-wrap" style="margin-top:14px;">
-              <label class="field-label">New Password for User</label>
-              <input id="modal-new-password" type="text" class="field-input"
-                placeholder="Min. 6 characters (e.g. TempPass@123)" />
-            </div>
-            <div class="admin-reset-actions" style="margin-top:10px;">
-              <button id="modal-set-password" class="btn-pro btn-green" type="button">🔑 Set Password via Firebase
-                Console</button>
-            </div>
-            <div id="modal-reset-guide" class="reset-guide-box" style="display:none;margin-top:14px;">
-              <p class="reset-guide-title">📋 Steps to set this password in Firebase:</p>
-              <ol class="reset-steps">
-                <li>Click <strong>"Open Firebase Console"</strong> below</li>
-                <li>Find <strong id="guide-email-highlight"></strong> in the list</li>
-                <li>Click the <strong>⋮ menu → Edit user</strong></li>
-                <li>In the Password field, enter: <strong id="guide-password-highlight" class="highlight-pass"></strong>
-                </li>
-                <li>Click <strong>Save</strong> ✅</li>
-              </ol>
-              <a href="https://console.firebase.google.com/project/spendwise-8b6fb/authentication/users" target="_blank"
-                rel="noopener" class="btn-pro btn-indigo"
-                style="margin-top:12px;text-decoration:none;display:inline-flex;justify-content:center;width:100%;">
-                🔗 Open Firebase Console
-              </a>
+                style="height:38px;padding:0 12px;font-size:12px;">� Copy</button>
             </div>
           </div>
+
 
           <div class="modal-divider"></div>
 

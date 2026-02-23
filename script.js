@@ -865,19 +865,44 @@ async function openEditModal(uid, username) {
   const title = document.getElementById('modal-edit-title');
   const newU = document.getElementById('modal-new-username');
   const emailBox = document.getElementById('modal-user-email');
+  const guideHighlight = document.getElementById('guide-email-highlight');
 
   if (title) title.textContent = 'Edit: ' + username;
   if (tag) tag.textContent = '👤 ' + username;
   if (newU) newU.value = username;
-  // Show the Firebase Auth email
-  if (emailBox) emailBox.textContent = username.toLowerCase() + '@spendwise.internal';
 
-  // Load real email from Firestore and show it
+  const fbEmail = username.toLowerCase() + '@spendwise.internal';
+  if (emailBox) emailBox.textContent = fbEmail;
+  if (guideHighlight) guideHighlight.textContent = fbEmail;
+
+  // Reset edit email input
+  const editEmailInput = document.getElementById('modal-edit-real-email');
+  if (editEmailInput) editEmailInput.value = '';
+
+  // Load real email from Firestore
   try {
     const doc = await userRef(uid).get();
-    const realEmail = doc.exists && doc.data().realEmail ? doc.data().realEmail : '— not set —';
+    const realEmail = doc.exists && doc.data().realEmail ? doc.data().realEmail : null;
     const realEmailEl = document.getElementById('modal-real-email');
-    if (realEmailEl) realEmailEl.textContent = realEmail;
+    const emailUserBtn = document.getElementById('modal-email-user');
+
+    if (realEmailEl) realEmailEl.textContent = realEmail || '— not set —';
+    if (editEmailInput && realEmail) editEmailInput.value = realEmail;
+
+    // Enable Email button only if we have a real email
+    if (emailUserBtn) {
+      if (realEmail) {
+        const subject = encodeURIComponent('Your SpendWise Account - Password Reset Request');
+        const body = encodeURIComponent(`Hi ${username},\n\nYour admin has initiated a password reset for your SpendWise account.\n\nPlease open the app and re-register using the same username: "${username}"\n\nYou can choose any new password during registration.\nAll your data will be automatically restored.\n\nApp link: ${window.location.origin}\n\nThank you!`);
+        emailUserBtn.href = `mailto:${realEmail}?subject=${subject}&body=${body}`;
+        emailUserBtn.style.pointerEvents = '';
+        emailUserBtn.style.opacity = '';
+      } else {
+        emailUserBtn.href = '#';
+        emailUserBtn.style.pointerEvents = 'none';
+        emailUserBtn.style.opacity = '.4';
+      }
+    }
   } catch (e) {
     const realEmailEl = document.getElementById('modal-real-email');
     if (realEmailEl) realEmailEl.textContent = '—';
@@ -1206,39 +1231,40 @@ Thank you!`);
     }).catch(() => notify('Copy failed', 'error'));
   });
 
-  // ── Admin Set Password button — shows step-by-step guide & updates Email User link ──
-  const modalSetPassword = document.getElementById('modal-set-password');
-  if (modalSetPassword) modalSetPassword.addEventListener('click', () => {
-    const newPw = document.getElementById('modal-new-password').value.trim();
-    const email = document.getElementById('modal-user-email').textContent.trim();
-    const realEmail = document.getElementById('modal-real-email').textContent.trim();
-    if (!newPw) { notify('Enter a new password first', 'error'); return; }
-    if (newPw.length < 6) { notify('Password must be at least 6 characters', 'error'); return; }
+  // ── Admin Save Real Email button ──
+  const modalSaveRealEmail = document.getElementById('modal-save-real-email');
+  if (modalSaveRealEmail) modalSaveRealEmail.addEventListener('click', async () => {
+    if (!_editingUID) return;
+    const newEmail = document.getElementById('modal-edit-real-email').value.trim();
+    if (!newEmail) { notify('Enter an email address first', 'error'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { notify('Enter a valid email address', 'error'); return; }
 
-    // Update the Email User button with temp password pre-filled
-    const emailUserLink = document.getElementById('modal-email-user');
-    if (emailUserLink && realEmail && realEmail !== '— not set —' && realEmail !== '—') {
-      const subject = encodeURIComponent('Your SpendWise Temporary Password');
-      const body = encodeURIComponent(`Hi ${_editingUsername},\n\nYour password has been reset by the Admin.\n\nYour temporary password: ${newPw}\n\nPlease login and go to Settings → Change Password to set your own password.\n\nApp link: ${window.location.origin}\n\nThank you!`);
-      emailUserLink.href = `mailto:${realEmail}?subject=${subject}&body=${body}`;
-      emailUserLink.style.pointerEvents = '';
-      emailUserLink.style.opacity = '';
+    try {
+      modalSaveRealEmail.textContent = 'Saving…';
+      modalSaveRealEmail.disabled = true;
+      await userRef(_editingUID).update({ realEmail: newEmail });
+
+      // Update display
+      const realEmailEl = document.getElementById('modal-real-email');
+      if (realEmailEl) realEmailEl.textContent = newEmail;
+
+      // Enable Email button
+      const emailUserBtn = document.getElementById('modal-email-user');
+      if (emailUserBtn) {
+        const subject = encodeURIComponent('Your SpendWise Account - Password Reset Request');
+        const body = encodeURIComponent(`Hi ${_editingUsername},\n\nYour admin has initiated a password reset for your SpendWise account.\n\nPlease open the app and re-register using the same username: "${_editingUsername}"\n\nYou can choose any new password during registration. All your data will be automatically restored.\n\nApp link: ${window.location.origin}\n\nThank you!`);
+        emailUserBtn.href = `mailto:${newEmail}?subject=${subject}&body=${body}`;
+        emailUserBtn.style.pointerEvents = '';
+        emailUserBtn.style.opacity = '';
+      }
+
+      notify('✅ Real email saved successfully!', 'success');
+    } catch (err) {
+      notify('Error saving email: ' + err.message, 'error');
+    } finally {
+      modalSaveRealEmail.textContent = '💾 Save Email';
+      modalSaveRealEmail.disabled = false;
     }
-
-    // Populate the step-by-step guide with exact values
-    const guideEmail = document.getElementById('guide-email-highlight');
-    const guidePass = document.getElementById('guide-password-highlight');
-    if (guideEmail) guideEmail.textContent = email;
-    if (guidePass) guidePass.textContent = newPw;
-
-    // Show the guide box
-    const guideBox = document.getElementById('modal-reset-guide');
-    if (guideBox) { guideBox.style.display = 'block'; guideBox.classList.add('visible'); }
-
-    // Also copy password to clipboard for convenience
-    navigator.clipboard.writeText(newPw).then(() => {
-      notify('📋 Password copied to clipboard! Paste it in Firebase Console.', 'success');
-    }).catch(() => { });
   });
 
   // ── User Tab Navigation (desktop + mobile) ──
