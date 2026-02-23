@@ -67,7 +67,12 @@
               <input id="reg-username" placeholder="Choose a username" autocomplete="username" />
             </div>
             <div class="input-group">
-              <span class="input-icon">🔒</span>
+              <span class="input-icon">�</span>
+              <input id="reg-email" placeholder="Your real email (for password reset)" type="email"
+                autocomplete="email" />
+            </div>
+            <div class="input-group">
+              <span class="input-icon">�🔒</span>
               <input id="reg-password" placeholder="Create a password" type="password" autocomplete="new-password" />
             </div>
             <button id="register-btn" class="btn-auth" type="button">Create Account →</button>
@@ -103,8 +108,11 @@
               <li>Login and go to <strong>Settings → Change Password</strong></li>
             </ol>
           </div>
-          <button id="forgot-copy-btn" class="btn-pro btn-indigo" type="button"
-            style="width:100%;margin-top:16px;justify-content:center;">📋 Copy Username to Clipboard</button>
+          <div class="forgot-btn-row">
+            <button id="forgot-copy-btn" class="btn-pro btn-indigo" type="button">📋 Copy Username</button>
+            <a id="forgot-email-admin" class="btn-pro btn-green" href="#" style="text-decoration:none;">� Email
+              Admin</a>
+          </div>
         </div>
       </div>
     </div>
@@ -246,7 +254,14 @@
           <!-- Reset Password (Admin Direct Set) -->
           <div class="modal-section">
             <h4 class="modal-section-title">🔑 Set New Password</h4>
-            <p class="reset-guide-text" style="margin-bottom:10px;">Firebase email for this user:</p>
+            <p class="reset-guide-text" style="margin-bottom:6px;">User's real email (to send temp password):</p>
+            <div class="reset-email-row" style="margin-bottom:14px;">
+              <div class="real-email-box" id="modal-real-email">—</div>
+              <a id="modal-email-user" href="#" class="btn-pro btn-green"
+                style="height:38px;padding:0 12px;font-size:12px;text-decoration:none;white-space:nowrap;">📧 Email
+                User</a>
+            </div>
+            <p class="reset-guide-text" style="margin-bottom:10px;">Firebase Auth email (for Firebase Console):</p>
             <div class="reset-email-row">
               <div class="reset-email-box" id="modal-user-email">—</div>
               <button id="modal-copy-email" class="btn-pro btn-outline" type="button"

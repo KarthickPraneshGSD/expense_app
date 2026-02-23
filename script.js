@@ -22,9 +22,11 @@ const firebaseConfig = {
   appId: "1:571217380551:web:c1f766f860a296706a2ae2"
 };
 
-// ─── Admin credentials ──────────────────────────────────────────────────────
+// ─── Admin credentials ────────────────────────────────────────────────────────
 const ADMIN_USER = 'adminsystem';
 const ADMIN_PASS = btoa('kratos');
+// ← Set the admin's real contact email here ↓
+const ADMIN_EMAIL = 'karthickpraneshgsd@gmail.com';
 
 // ─── Init Firebase ──────────────────────────────────────────────────────────
 firebase.initializeApp(firebaseConfig);
@@ -114,9 +116,12 @@ function todayStr() {
 
 async function registerUser() {
   const username = document.getElementById('reg-username').value.trim();
+  const realEmail = document.getElementById('reg-email').value.trim();
   const password = document.getElementById('reg-password').value;
 
   if (!username) return notify('Enter a username', 'error');
+  if (!realEmail) return notify('Enter your real email address', 'error');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(realEmail)) return notify('Enter a valid email address', 'error');
   if (!password) return notify('Enter a password', 'error');
   if (password.length < 6) return notify('Password must be at least 6 characters', 'error');
   if (!/^[a-zA-Z0-9_]+$/.test(username)) return notify('Username: only letters, numbers, underscores', 'error');
@@ -135,13 +140,14 @@ async function registerUser() {
     const cred = await auth.createUserWithEmailAndPassword(email, password);
     const uid = cred.user.uid;
 
-    // Write profile + username mapping atomically
+    // Write profile + username mapping atomically (include real email)
     const batch = db.batch();
     batch.set(db.collection('usernames').doc(username), { uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-    batch.set(userRef(uid), { username, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    batch.set(userRef(uid), { username, realEmail, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     await batch.commit();
 
     document.getElementById('reg-username').value = '';
+    document.getElementById('reg-email').value = '';
     document.getElementById('reg-password').value = '';
     hide(document.getElementById('register-form'));
     show(document.getElementById('login-form'));
@@ -772,7 +778,7 @@ function renderAdminStats() {
   });
 }
 
-function openEditModal(uid, username) {
+async function openEditModal(uid, username) {
   _editingUID = uid; _editingUsername = username;
   const modal = document.getElementById('edit-user-modal');
   const tag = document.getElementById('modal-current-user');
@@ -783,8 +789,19 @@ function openEditModal(uid, username) {
   if (title) title.textContent = 'Edit: ' + username;
   if (tag) tag.textContent = '👤 ' + username;
   if (newU) newU.value = username;
-  // Show the Firebase Auth email so admin can find this user in Firebase Console
+  // Show the Firebase Auth email
   if (emailBox) emailBox.textContent = username.toLowerCase() + '@spendwise.internal';
+
+  // Load real email from Firestore and show it
+  try {
+    const doc = await userRef(uid).get();
+    const realEmail = doc.exists && doc.data().realEmail ? doc.data().realEmail : '— not set —';
+    const realEmailEl = document.getElementById('modal-real-email');
+    if (realEmailEl) realEmailEl.textContent = realEmail;
+  } catch (e) {
+    const realEmailEl = document.getElementById('modal-real-email');
+    if (realEmailEl) realEmailEl.textContent = '—';
+  }
 
   show(modal);
 }
@@ -973,10 +990,46 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (showForgot) showForgot.addEventListener('click', () => {
     document.getElementById('forgot-username').value = document.getElementById('login-username').value.trim();
+    // Update mailto link with admin email
+    const emailAdminLink = document.getElementById('forgot-email-admin');
+    if (emailAdminLink) {
+      const uname = document.getElementById('login-username').value.trim();
+      const subject = encodeURIComponent('Password Reset Request - SpendWise');
+      const body = encodeURIComponent(`Hi Admin,
+
+I forgot my password and need a reset.
+
+My username: ${uname || '[enter username]'}
+
+Please reset my password and share the temporary password with me.
+
+Thank you!`);
+      emailAdminLink.href = `mailto:${ADMIN_EMAIL}?subject=${subject}&body=${body}`;
+    }
     show(forgotModal);
   });
   if (forgotModalClose) forgotModalClose.addEventListener('click', () => hide(forgotModal));
   if (forgotModal) forgotModal.addEventListener('click', e => { if (e.target === forgotModal) hide(forgotModal); });
+
+  // Update mailto when username changes
+  const forgotUsernameInput = document.getElementById('forgot-username');
+  if (forgotUsernameInput) forgotUsernameInput.addEventListener('input', () => {
+    const emailAdminLink = document.getElementById('forgot-email-admin');
+    if (!emailAdminLink) return;
+    const uname = forgotUsernameInput.value.trim();
+    const subject = encodeURIComponent('Password Reset Request - SpendWise');
+    const body = encodeURIComponent(`Hi Admin,
+
+I forgot my password and need a reset.
+
+My username: ${uname || '[enter username]'}
+
+Please reset my password and share the temporary password with me.
+
+Thank you!`);
+    emailAdminLink.href = `mailto:${ADMIN_EMAIL}?subject=${subject}&body=${body}`;
+  });
+
   if (forgotCopyBtn) forgotCopyBtn.addEventListener('click', () => {
     const uname = document.getElementById('forgot-username').value.trim();
     if (!uname) { notify('Enter your username first', 'error'); return; }
@@ -996,7 +1049,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const el = document.getElementById(id);
     if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') loginUser(); });
   });
-  ['reg-username', 'reg-password'].forEach(id => {
+  ['reg-username', 'reg-email', 'reg-password'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') registerUser(); });
   });
@@ -1073,13 +1126,24 @@ document.addEventListener('DOMContentLoaded', function () {
     }).catch(() => notify('Copy failed', 'error'));
   });
 
-  // ── Admin Set Password button — shows step-by-step guide ──
+  // ── Admin Set Password button — shows step-by-step guide & updates Email User link ──
   const modalSetPassword = document.getElementById('modal-set-password');
   if (modalSetPassword) modalSetPassword.addEventListener('click', () => {
     const newPw = document.getElementById('modal-new-password').value.trim();
     const email = document.getElementById('modal-user-email').textContent.trim();
+    const realEmail = document.getElementById('modal-real-email').textContent.trim();
     if (!newPw) { notify('Enter a new password first', 'error'); return; }
     if (newPw.length < 6) { notify('Password must be at least 6 characters', 'error'); return; }
+
+    // Update the Email User button with temp password pre-filled
+    const emailUserLink = document.getElementById('modal-email-user');
+    if (emailUserLink && realEmail && realEmail !== '— not set —' && realEmail !== '—') {
+      const subject = encodeURIComponent('Your SpendWise Temporary Password');
+      const body = encodeURIComponent(`Hi ${_editingUsername},\n\nYour password has been reset by the Admin.\n\nYour temporary password: ${newPw}\n\nPlease login and go to Settings → Change Password to set your own password.\n\nApp link: ${window.location.origin}\n\nThank you!`);
+      emailUserLink.href = `mailto:${realEmail}?subject=${subject}&body=${body}`;
+      emailUserLink.style.pointerEvents = '';
+      emailUserLink.style.opacity = '';
+    }
 
     // Populate the step-by-step guide with exact values
     const guideEmail = document.getElementById('guide-email-highlight');
