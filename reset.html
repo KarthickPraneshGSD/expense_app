@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reset Password — SpendWise</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(145deg, #1e1b4b 0%, #312e81 45%, #4c1d95 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 44px 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, .30);
+            animation: fadeUp .4s ease;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 28px;
+        }
+
+        .logo-icon {
+            font-size: 26px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #94a3b8;
+            font-weight: 500;
+            margin-bottom: 28px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        input[type="password"] {
+            padding: 12px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            color: #1e293b;
+            background: #f8fafc;
+            outline: none;
+            transition: all .2s;
+            width: 100%;
+        }
+
+        input[type="password"]:focus {
+            border-color: #6366f1;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, .12);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all .25s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, .4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .msg {
+            margin-top: 16px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .msg.success {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+            display: block;
+        }
+
+        .msg.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+            display: block;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #6366f1;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Invalid/expired state */
+        .invalid-state {
+            text-align: center;
+            padding: 12px 0;
+        }
+
+        .invalid-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .invalid-state h2 {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+
+        .invalid-state p {
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card">
+        <div class="logo">
+            <span class="logo-icon">💸</span>
+            SpendWise
+        </div>
+
+        <!-- Shown while loading -->
+        <div id="loading-state">
+            <h1>Verifying link…</h1>
+            <p class="subtitle">Please wait a moment.</p>
+        </div>
+
+        <!-- Shown when link is valid -->
+        <div id="reset-form" style="display:none;">
+            <h1>Set New Password</h1>
+            <p class="subtitle" id="reset-subtitle">Choose a strong new password for your account.</p>
+
+            <div class="field">
+                <label>New Password</label>
+                <input type="password" id="new-pw" placeholder="At least 6 characters" autocomplete="new-password" />
+            </div>
+            <div class="field">
+                <label>Confirm Password</label>
+                <input type="password" id="confirm-pw" placeholder="Repeat new password" autocomplete="new-password" />
+            </div>
+
+            <button class="btn" id="reset-btn" type="button">🔒 Set New Password</button>
+            <div class="msg" id="msg"></div>
+        </div>
+
+        <!-- Shown when link is invalid/expired -->
+        <div id="invalid-state" style="display:none;" class="invalid-state">
+            <div class="invalid-icon">⚠️</div>
+            <h2>Link Invalid or Expired</h2>
+            <p>This password reset link has expired or already been used.<br />Ask your admin to generate a new reset
+                link from the Firebase Console.</p>
+        </div>
+
+        <a href="/" class="back-link">← Back to SpendWise</a>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDWK1OWN57XvaDT96cJvPhKOXz3hCz9USA",
+            authDomain: "spendwise-8b6fb.firebaseapp.com",
+            projectId: "spendwise-8b6fb",
+            storageBucket: "spendwise-8b6fb.firebasestorage.app",
+            messagingSenderId: "571217380551",
+            appId: "1:571217380551:web:c1f766f860a296706a2ae2"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // ── Parse URL params ──────────────────────────────────────────────
+        const params = new URLSearchParams(window.location.search);
+        const mode = params.get('mode');
+        const oobCode = params.get('oobCode');
+
+        const loadingEl = document.getElementById('loading-state');
+        const formEl = document.getElementById('reset-form');
+        const invalidEl = document.getElementById('invalid-state');
+        const msgEl = document.getElementById('msg');
+        const subtitleEl = document.getElementById('reset-subtitle');
+
+        function showMsg(text, type) {
+            msgEl.textContent = text;
+            msgEl.className = 'msg ' + type;
+        }
+
+        // ── Verify the action code ────────────────────────────────────────
+        if (mode === 'resetPassword' && oobCode) {
+            auth.verifyPasswordResetCode(oobCode)
+                .then(email => {
+                    // Extract username from the fake email
+                    const username = email.replace('@spendwise.internal', '');
+                    loadingEl.style.display = 'none';
+                    formEl.style.display = 'block';
+                    subtitleEl.textContent = `Setting new password for: ${username}`;
+                })
+                .catch(() => {
+                    loadingEl.style.display = 'none';
+                    invalidEl.style.display = 'block';
+                });
+        } else {
+            // No valid mode/code — show invalid state
+            loadingEl.style.display = 'none';
+            invalidEl.style.display = 'block';
+        }
+
+        // ── Handle form submit ────────────────────────────────────────────
+        document.getElementById('reset-btn').addEventListener('click', async () => {
+            const newPw = document.getElementById('new-pw').value;
+            const confPw = document.getElementById('confirm-pw').value;
+
+            if (!newPw) return showMsg('Enter a new password', 'error');
+            if (newPw.length < 6) return showMsg('Password must be at least 6 characters', 'error');
+            if (newPw !== confPw) return showMsg('Passwords do not match', 'error');
+
+            const btn = document.getElementById('reset-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Updating…';
+
+            try {
+                await auth.confirmPasswordReset(oobCode, newPw);
+                showMsg('✅ Password updated! You can now log in with your new password.', 'success');
+                document.getElementById('new-pw').value = '';
+                document.getElementById('confirm-pw').value = '';
+                btn.style.display = 'none';
+                // Redirect to login after 3 seconds
+                setTimeout(() => { window.location.href = '/'; }, 3000);
+            } catch (err) {
+                const code = err.code || '';
+                if (code === 'auth/expired-action-code' || code === 'auth/invalid-action-code') {
+                    showMsg('This reset link has expired. Ask your admin for a new one.', 'error');
+                } else if (code === 'auth/weak-password') {
+                    showMsg('Password too weak — use at least 6 characters', 'error');
+                } else {
+                    showMsg('Error: ' + err.message, 'error');
+                }
+                btn.disabled = false;
+                btn.textContent = '🔒 Set New Password';
+            }
+        });
+
+        // Enter key support
+        ['new-pw', 'confirm-pw'].forEach(id => {
+            document.getElementById(id).addEventListener('keydown', e => {
+                if (e.key === 'Enter') document.getElementById('reset-btn').click();
+            });
+        });
+    </script>
+</body>
+
+</html>
