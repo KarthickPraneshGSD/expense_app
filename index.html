@@ -452,6 +452,38 @@
                 </div>
               </div>
 
+              <!-- Split Bill (compact) -->
+              <div class="panel">
+                <div class="panel-header">
+                  <h3 class="panel-title">🤝 Split Bill</h3>
+                  <span class="panel-badge">Auto-share</span>
+                </div>
+                <div class="compact-form-row">
+                  <div class="field-wrap">
+                    <label class="field-label">Date</label>
+                    <input id="split-date" type="date" class="field-input" />
+                  </div>
+                  <div class="field-wrap flex2">
+                    <label class="field-label">Description</label>
+                    <input id="split-desc" type="text" placeholder="e.g. Tea break" maxlength="60"
+                      class="field-input" />
+                  </div>
+                  <div class="field-wrap">
+                    <label class="field-label">Total Bill (₹)</label>
+                    <input id="split-total" type="number" placeholder="30" class="field-input" />
+                  </div>
+                  <div class="field-wrap">
+                    <label class="field-label">People</label>
+                    <input id="split-people" type="number" placeholder="2" min="2" class="field-input" />
+                  </div>
+                  <div class="field-wrap field-actions">
+                    <label class="field-label">&nbsp;</label>
+                    <button id="split-add" class="btn-pro btn-green" type="button" style="width:100%;">➗ Split</button>
+                  </div>
+                </div>
+                <div id="split-preview" class="budget-hint"></div>
+              </div>
+
               <!-- Income Manager (compact) -->
               <div class="panel">
                 <div class="panel-header">

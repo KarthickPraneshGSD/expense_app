@@ -648,6 +648,52 @@ function updateSummary() {
   }
 }
 
+// \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+//  SPLIT BILL
+// \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+
+function updateSplitPreview() {
+  const total = parseFloat(document.getElementById('split-total')?.value);
+  const people = parseInt(document.getElementById('split-people')?.value);
+  const preview = document.getElementById('split-preview');
+  if (!preview) return;
+  if (isNaN(total) || isNaN(people) || people < 2 || total <= 0) {
+    preview.textContent = '';
+    return;
+  }
+  const share = total / people;
+  preview.textContent = `\u2714\ufe0f Your share: \u20b9${share.toFixed(2)}  (Total \u20b9${total.toFixed(2)} \u00f7 ${people} people)`;
+}
+
+async function splitBill() {
+  const date = document.getElementById('split-date')?.value || todayStr();
+  const desc = document.getElementById('split-desc')?.value.trim();
+  const total = parseFloat(document.getElementById('split-total')?.value);
+  const people = parseInt(document.getElementById('split-people')?.value);
+
+  if (!desc) return notify('Enter a description (e.g. Tea break)', 'error');
+  if (isNaN(total) || total <= 0) return notify('Enter the total bill amount', 'error');
+  if (isNaN(people) || people < 2) return notify('Enter at least 2 people', 'error');
+
+  const share = parseFloat((total / people).toFixed(2));
+
+  try {
+    await expsRef(_currentUID).add({
+      desc: `${desc} (split \u00f7${people})`,
+      amt: share,
+      date,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('split-desc').value = '';
+    document.getElementById('split-total').value = '';
+    document.getElementById('split-people').value = '';
+    document.getElementById('split-preview').textContent = '';
+    notify(`\u2705 Your share \u20b9${share.toFixed(2)} added (Total \u20b9${total.toFixed(2)} \u00f7 ${people})`, 'success');
+  } catch (err) {
+    notify('Error: ' + err.message, 'error');
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  INCOME (subcollection — multiple sources: Salary, Emergency Fund, Bonus…)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1453,6 +1499,16 @@ Thank you!`);
 
   const addIncBtn = document.getElementById('add-income');
   if (addIncBtn) addIncBtn.addEventListener('click', addIncome);
+
+  // ── Split Bill ──
+  const splitDateInput = document.getElementById('split-date');
+  if (splitDateInput) splitDateInput.value = today;
+  const splitAddBtn = document.getElementById('split-add');
+  if (splitAddBtn) splitAddBtn.addEventListener('click', splitBill);
+  ['split-total', 'split-people'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateSplitPreview);
+  });
 
   const filterDateInput = document.getElementById('filter-date');
   const filterTodayBtn = document.getElementById('filter-today');
