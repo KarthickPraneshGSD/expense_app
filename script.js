@@ -46,10 +46,10 @@ let _expenses = [];          // local cache: array of { id, desc, amt, date, cre
 let _budgets = {};          // local cache: { 'YYYY-MM-DD': amount }
 let _unsubExpenses = null;        // Firestore real-time listener cleanup
 let _unsubBudgets = null;
-let _income = [];           // local cache: array of { id, desc, amt, date, createdAt }
+let _income = [];           // local cache for current income entry
 let _unsubIncome = null;
-// _incomeAmt: the single current income value
-let _incomeAmt = 0;
+let _incomeAmt = 0;         // current income amount
+let _incomeDate = null;     // date income was set (only expenses from this date count)
 
 // ─── Shortcuts ──────────────────────────────────────────────────────────────
 const userRef = (uid) => db.collection('users').doc(uid);
@@ -432,9 +432,11 @@ function startUserListeners(uid) {
       if (snap.exists) {
         const d = snap.data();
         _incomeAmt = d.amt || 0;
+        _incomeDate = d.date || null;   // store the salary credit date
         _income = [{ id: 'current', ...d }];
       } else {
         _incomeAmt = 0;
+        _incomeDate = null;
         _income = [];
       }
       updateSummary();
@@ -622,9 +624,11 @@ function updateSummary() {
   // Daily Stats (Date-specific)
   const bud = _budgets[selectedDate] || 0;
 
-  // Global Stats
+  // Global Stats — only count expenses on/after the income date
   const totalIncome = _incomeAmt || 0;
-  const totalSpent = (_expenses || []).reduce((s, e) => s + (e.amt || 0), 0);
+  const totalSpent = (_expenses || [])
+    .filter(e => !_incomeDate || e.date >= _incomeDate)
+    .reduce((s, e) => s + (e.amt || 0), 0);
   const balance = totalIncome - totalSpent;
 
   const budEl = document.getElementById('budget-val');
@@ -685,7 +689,8 @@ function renderIncomeList() {
   li.innerHTML = `
     <div>
       <div><strong>${it.desc}</strong></div>
-      <div class="income-meta">${it.date} &bull; &#8377;${(it.amt || 0).toFixed(2)}</div>
+      <div class="income-meta">Salary cycle from ${it.date} &bull; &#8377;${(it.amt || 0).toFixed(2)}</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:3px;">Only expenses from ${it.date} onwards affect the balance</div>
     </div>
     <div><button id="clear-income-btn">Reset</button></div>`;
   list.appendChild(li);
