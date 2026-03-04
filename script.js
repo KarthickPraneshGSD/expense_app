@@ -48,12 +48,14 @@ let _unsubExpenses = null;        // Firestore real-time listener cleanup
 let _unsubBudgets = null;
 let _income = [];           // local cache: array of { id, desc, amt, date, createdAt }
 let _unsubIncome = null;
+// _incomeAmt: the single current income value
+let _incomeAmt = 0;
 
 // ─── Shortcuts ──────────────────────────────────────────────────────────────
 const userRef = (uid) => db.collection('users').doc(uid);
 const expsRef = (uid) => userRef(uid).collection('expenses');
 const budgRef = (uid) => userRef(uid).collection('budgets');
-const incRef = (uid) => userRef(uid).collection('income');
+const incDocRef = (uid) => userRef(uid).collection('income').doc('current');
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  ROLE TOGGLE
@@ -424,16 +426,21 @@ function startUserListeners(uid) {
       notify('Error loading budgets: ' + err.message, 'error');
     });
 
-  // ── Income listener ──
-  _unsubIncome = incRef(uid)
-    .orderBy('date', 'desc')
+  // ── Income listener (single document: income/current) ──
+  _unsubIncome = incDocRef(uid)
     .onSnapshot(snap => {
-      _income = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (snap.exists) {
+        const d = snap.data();
+        _incomeAmt = d.amt || 0;
+        _income = [{ id: 'current', ...d }];
+      } else {
+        _incomeAmt = 0;
+        _income = [];
+      }
       updateSummary();
       renderIncomeList();
     }, err => {
       console.error('Income listener error:', err);
-      notify('Error loading income: ' + err.message, 'error');
     });
 }
 
@@ -616,7 +623,7 @@ function updateSummary() {
   const bud = _budgets[selectedDate] || 0;
 
   // Global Stats
-  const totalIncome = (_income || []).reduce((s, i) => s + (i.amt || 0), 0);
+  const totalIncome = _incomeAmt || 0;
   const totalSpent = (_expenses || []).reduce((s, e) => s + (e.amt || 0), 0);
   const balance = totalIncome - totalSpent;
 
@@ -635,7 +642,7 @@ function updateSummary() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  INCOME  (each income = one Firestore doc: users/{uid}/income/{id})
+//  INCOME (single doc: users/{uid}/income/current — SET replaces old value)
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function addIncome() {
@@ -648,17 +655,18 @@ async function addIncome() {
   if (isNaN(amt) || amt <= 0) return notify('Enter a valid amount', 'error');
 
   try {
-    await incRef(_currentUID).add({
+    // set() replaces the old income entirely — no accumulation
+    await incDocRef(_currentUID).set({
       desc,
       amt,
       date,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     document.getElementById('inc-desc').value = '';
     document.getElementById('inc-amt').value = '';
-    notify('Income added for ' + date, 'success');
+    notify('✅ Income set to ₹' + amt.toFixed(2), 'success');
   } catch (err) {
-    notify('Error adding income: ' + err.message, 'error');
+    notify('Error setting income: ' + err.message, 'error');
   }
 }
 
@@ -667,30 +675,28 @@ function renderIncomeList() {
   if (!list) return;
   list.innerHTML = '';
 
-  const items = _income || [];
-  if (items.length === 0) {
-    list.innerHTML = '<li style="text-align:center;color:#64748b;padding:20px;border:none;background:transparent;">No income history yet</li>';
+  if (!_income || _income.length === 0 || !_incomeAmt) {
+    list.innerHTML = '<li style="text-align:center;color:#64748b;padding:20px;border:none;background:transparent;">No income set yet — add your salary above</li>';
     return;
   }
 
-  items.forEach(it => {
-    const li = document.createElement('li');
-    li.innerHTML = `
-      <div>
-        <div><strong>${it.desc}</strong></div>
-        <div class="income-meta">${it.date} &bull; &#8377;${(it.amt || 0).toFixed(2)}</div>
-      </div>
-      <div><button data-id="${it.id}">Delete</button></div>`;
-    list.appendChild(li);
-    li.querySelector('button').addEventListener('click', () => deleteIncome(it.id));
-  });
+  const it = _income[0]; // only one active income entry
+  const li = document.createElement('li');
+  li.innerHTML = `
+    <div>
+      <div><strong>${it.desc}</strong></div>
+      <div class="income-meta">${it.date} &bull; &#8377;${(it.amt || 0).toFixed(2)}</div>
+    </div>
+    <div><button id="clear-income-btn">Reset</button></div>`;
+  list.appendChild(li);
+  li.querySelector('button').addEventListener('click', clearIncome);
 }
 
-async function deleteIncome(id) {
-  if (!confirm('Delete this income record?')) return;
+async function clearIncome() {
+  if (!confirm('Reset your current income to zero?')) return;
   try {
-    await incRef(_currentUID).doc(id).delete();
-    notify('Deleted', 'success');
+    await incDocRef(_currentUID).delete();
+    notify('Income reset', 'success');
   } catch (err) {
     notify('Error: ' + err.message, 'error');
   }
