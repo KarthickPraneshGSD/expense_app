@@ -1900,4 +1900,71 @@ body {
   font-family: 'Courier New', monospace;
   font-size: 14px;
   letter-spacing: .5px;
+}/* ── TYPE TOGGLE (Expense / Credit) ─────────────────────────────────────── */
+.type-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--slate-100);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+}
+
+.type-btn {
+    padding: 5px 12px;
+    border: none;
+    border-radius: calc(var(--radius-sm) - 2px);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    color: var(--slate-500);
+    background: transparent;
+    transition: all .2s ease;
+    white-space: nowrap;
+}
+
+.type-btn--active {
+    background: white;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .12);
+}
+
+/* Expense mode — active is red */
+.type-btn--active.exp-mode {
+    color: var(--red);
+}
+
+/* Credit mode — active is green */
+.type-btn--active.credit-mode {
+    color: #16a34a;
+}
+
+/* ── CREDIT ROW IN EXPENSE LIST ────────────────────────────────────────── */
+.expenses-list li.credit-row {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+
+.expenses-list li.credit-row:hover {
+    border-color: #16a34a;
+    background: #dcfce7;
+}
+
+.credit-amount {
+    color: #16a34a;
+    font-weight: 700;
+}
+
+.credit-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    background: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 5px;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: .4px;
 }

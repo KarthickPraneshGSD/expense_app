@@ -426,10 +426,15 @@
                 <div id="budget-existing-hint" class="budget-hint"></div>
               </div>
 
-              <!-- Add Expense (compact) -->
+              <!-- Add Expense / Credit (compact) -->
               <div class="panel">
                 <div class="panel-header">
-                  <h3 class="panel-title">➕ Add Expense</h3>
+                  <h3 class="panel-title" id="exp-panel-title">➕ Add Expense</h3>
+                  <!-- Debit / Credit toggle -->
+                  <div class="type-toggle">
+                    <button id="type-debit" class="type-btn type-btn--active" type="button">− Expense</button>
+                    <button id="type-credit" class="type-btn" type="button">＋ Credit</button>
+                  </div>
                 </div>
                 <div class="compact-form-row">
                   <div class="field-wrap">

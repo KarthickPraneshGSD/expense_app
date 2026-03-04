@@ -546,6 +546,9 @@ async function resetBudget() {
 //  EXPENSES  (each expense = one Firestore doc: users/{uid}/expenses/{id})
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Tracks current entry mode: 'debit' | 'credit'
+let _entryType = 'debit';
+
 async function addExpense() {
   const expDateInput = document.getElementById('exp-date');
   const date = (expDateInput && expDateInput.value) ? expDateInput.value : todayStr();
@@ -560,14 +563,15 @@ async function addExpense() {
       desc,
       amt,
       date,
+      type: _entryType,   // 'debit' | 'credit'
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     document.getElementById('exp-desc').value = '';
     document.getElementById('exp-amt').value = '';
-    notify('Expense added for ' + date, 'success');
-    // listener auto-updates _expenses → renderExpenses()
+    const label = _entryType === 'credit' ? 'Credit' : 'Expense';
+    notify(`${label} added for ${date}`, 'success');
   } catch (err) {
-    notify('Error adding expense: ' + err.message, 'error');
+    notify('Error: ' + err.message, 'error');
   }
 }
 
@@ -583,25 +587,31 @@ function renderExpenses() {
   if (!list) return;
   list.innerHTML = '';
 
-  const total = items.reduce((sum, e) => sum + (e.amt || 0), 0);
+  // Net total: debits - credits
+  const netTotal = items.reduce((sum, e) => {
+    return e.type === 'credit' ? sum - (e.amt || 0) : sum + (e.amt || 0);
+  }, 0);
   const totalEl = document.getElementById('expenses-total-val');
-  if (totalEl) totalEl.textContent = total.toFixed(2);
+  if (totalEl) totalEl.textContent = netTotal.toFixed(2);
 
   if (items.length === 0) {
     const li = document.createElement('li');
-    li.textContent = filterDate ? `No expenses for ${filterDate}` : 'No expenses yet';
+    li.textContent = filterDate ? `No entries for ${filterDate}` : 'No entries yet';
     li.style.cssText = 'text-align:center;color:#64748b;padding:20px;border:none;background:transparent;';
     list.appendChild(li);
     return;
   }
 
-  // Already ordered by date desc, createdAt desc from Firestore
   items.forEach(it => {
+    const isCredit = it.type === 'credit';
     const li = document.createElement('li');
+    if (isCredit) li.classList.add('credit-row');
     li.innerHTML = `
       <div>
-        <div><strong>${it.desc}</strong></div>
-        <div class="expense-meta">${it.date} &bull; &#8377;${(it.amt || 0).toFixed(2)}</div>
+        <div><strong>${it.desc}</strong>${isCredit ? '<span class="credit-badge">Credit</span>' : ''}</div>
+        <div class="expense-meta">${it.date} &bull;
+          <span class="${isCredit ? 'credit-amount' : ''}">${isCredit ? '+' : ''}&#8377;${(it.amt || 0).toFixed(2)}</span>
+        </div>
       </div>
       <div><button data-id="${it.id}">Delete</button></div>`;
     list.appendChild(li);
@@ -627,12 +637,12 @@ function updateSummary() {
   // Daily Stats (Date-specific)
   const bud = _budgets[selectedDate] || 0;
 
-  // Global Stats — only count expenses on/after the earliest income date
+  // Global Stats — credits reduce totalSpent, only count from earliest income date
   const totalIncome = _incomeTotal || 0;
   const totalSpent = (_expenses || [])
     .filter(e => !_incomeEarliestDate || e.date >= _incomeEarliestDate)
-    .reduce((s, e) => s + (e.amt || 0), 0);
-  const balance = totalIncome - totalSpent;
+    .reduce((s, e) => e.type === 'credit' ? s - (e.amt || 0) : s + (e.amt || 0), 0);
+  const balance = totalIncome - Math.max(0, totalSpent);
 
   const budEl = document.getElementById('budget-val');
   const incEl = document.getElementById('income-val');
@@ -1493,6 +1503,29 @@ Thank you!`);
   }
   const expDateInput = document.getElementById('exp-date');
   if (expDateInput) expDateInput.value = today;
+
+  // ── Debit / Credit type toggle ──
+  const typeDebitBtn = document.getElementById('type-debit');
+  const typeCreditBtn = document.getElementById('type-credit');
+  const addExpBtn = document.getElementById('add-expense');
+  const panelTitle = document.getElementById('exp-panel-title');
+
+  function setEntryType(type) {
+    _entryType = type;
+    const isCredit = type === 'credit';
+    if (typeDebitBtn) { typeDebitBtn.classList.toggle('type-btn--active', !isCredit); typeDebitBtn.classList.toggle('exp-mode', !isCredit); }
+    if (typeCreditBtn) { typeCreditBtn.classList.toggle('type-btn--active', isCredit); typeCreditBtn.classList.toggle('credit-mode', isCredit); }
+    if (addExpBtn) {
+      addExpBtn.className = isCredit ? 'btn-pro btn-indigo' : 'btn-pro btn-green';
+      addExpBtn.textContent = isCredit ? '＋ Add Credit' : '＋ Add';
+    }
+    if (panelTitle) panelTitle.textContent = isCredit ? '➕ Add Credit / Refund' : '➕ Add Expense';
+    const descInput = document.getElementById('exp-desc');
+    if (descInput) descInput.placeholder = isCredit ? 'e.g. Refund, Cashback, Friend repaid' : 'What did you spend on?';
+  }
+
+  if (typeDebitBtn) typeDebitBtn.addEventListener('click', () => setEntryType('debit'));
+  if (typeCreditBtn) typeCreditBtn.addEventListener('click', () => setEntryType('credit'));
 
   const incDateInput = document.getElementById('inc-date');
   if (incDateInput) incDateInput.value = today;
