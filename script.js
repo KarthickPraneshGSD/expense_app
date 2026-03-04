@@ -432,8 +432,13 @@ function startUserListeners(uid) {
       if (snap.exists) {
         const d = snap.data();
         _incomeAmt = d.amt || 0;
-        _incomeDate = d.date || null;   // store the salary credit date
-        _income = [{ id: 'current', ...d }];
+        // If date is missing (old doc), default to today so old expenses don't count
+        _incomeDate = d.date || todayStr();
+        _income = [{ id: 'current', ...d, date: _incomeDate }];
+        // Auto-patch missing date into the doc silently
+        if (!d.date) {
+          incDocRef(uid).update({ date: _incomeDate }).catch(() => { });
+        }
       } else {
         _incomeAmt = 0;
         _incomeDate = null;
