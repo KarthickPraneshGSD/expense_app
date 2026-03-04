@@ -46,16 +46,16 @@ let _expenses = [];          // local cache: array of { id, desc, amt, date, cre
 let _budgets = {};          // local cache: { 'YYYY-MM-DD': amount }
 let _unsubExpenses = null;        // Firestore real-time listener cleanup
 let _unsubBudgets = null;
-let _income = [];           // local cache for current income entry
+let _income = [];           // local cache: array of { id, desc, amt, date }
 let _unsubIncome = null;
-let _incomeAmt = 0;         // current income amount
-let _incomeDate = null;     // date income was set (only expenses from this date count)
+let _incomeTotal = 0;       // sum of all active income sources
+let _incomeEarliestDate = null; // earliest income date — expenses from here count
 
 // ─── Shortcuts ──────────────────────────────────────────────────────────────
 const userRef = (uid) => db.collection('users').doc(uid);
 const expsRef = (uid) => userRef(uid).collection('expenses');
 const budgRef = (uid) => userRef(uid).collection('budgets');
-const incDocRef = (uid) => userRef(uid).collection('income').doc('current');
+const incRef = (uid) => userRef(uid).collection('income');
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  ROLE TOGGLE
@@ -426,28 +426,26 @@ function startUserListeners(uid) {
       notify('Error loading budgets: ' + err.message, 'error');
     });
 
-  // ── Income listener (single document: income/current) ──
-  _unsubIncome = incDocRef(uid)
+  // ── Income listener (subcollection — multiple sources) ──
+  _unsubIncome = incRef(uid)
+    .orderBy('date', 'desc')
     .onSnapshot(snap => {
-      if (snap.exists) {
-        const d = snap.data();
-        _incomeAmt = d.amt || 0;
-        // If date is missing (old doc), default to today so old expenses don't count
-        _incomeDate = d.date || todayStr();
-        _income = [{ id: 'current', ...d, date: _incomeDate }];
-        // Auto-patch missing date into the doc silently
-        if (!d.date) {
-          incDocRef(uid).update({ date: _incomeDate }).catch(() => { });
-        }
-      } else {
-        _incomeAmt = 0;
-        _incomeDate = null;
-        _income = [];
-      }
+      _income = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      _incomeTotal = _income.reduce((s, i) => s + (i.amt || 0), 0);
+      const dates = _income.map(i => i.date).filter(Boolean).sort();
+      _incomeEarliestDate = dates.length > 0 ? dates[0] : null;
       updateSummary();
       renderIncomeList();
-    }, err => {
-      console.error('Income listener error:', err);
+    }, () => {
+      // Index missing — fall back to unordered
+      _unsubIncome = incRef(uid).onSnapshot(snap => {
+        _income = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        _incomeTotal = _income.reduce((s, i) => s + (i.amt || 0), 0);
+        const dates = _income.map(i => i.date).filter(Boolean).sort();
+        _incomeEarliestDate = dates.length > 0 ? dates[0] : null;
+        updateSummary();
+        renderIncomeList();
+      });
     });
 }
 
@@ -629,10 +627,10 @@ function updateSummary() {
   // Daily Stats (Date-specific)
   const bud = _budgets[selectedDate] || 0;
 
-  // Global Stats — only count expenses on/after the income date
-  const totalIncome = _incomeAmt || 0;
+  // Global Stats — only count expenses on/after the earliest income date
+  const totalIncome = _incomeTotal || 0;
   const totalSpent = (_expenses || [])
-    .filter(e => !_incomeDate || e.date >= _incomeDate)
+    .filter(e => !_incomeEarliestDate || e.date >= _incomeEarliestDate)
     .reduce((s, e) => s + (e.amt || 0), 0);
   const balance = totalIncome - totalSpent;
 
@@ -651,7 +649,7 @@ function updateSummary() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  INCOME (single doc: users/{uid}/income/current — SET replaces old value)
+//  INCOME (subcollection — multiple sources: Salary, Emergency Fund, Bonus…)
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function addIncome() {
@@ -660,22 +658,19 @@ async function addIncome() {
   const desc = document.getElementById('inc-desc').value.trim();
   const amt = parseFloat(document.getElementById('inc-amt').value);
 
-  if (!desc) return notify('Enter a source (e.g. Salary)', 'error');
+  if (!desc) return notify('Enter a source (e.g. Salary, Emergency Fund)', 'error');
   if (isNaN(amt) || amt <= 0) return notify('Enter a valid amount', 'error');
 
   try {
-    // set() replaces the old income entirely — no accumulation
-    await incDocRef(_currentUID).set({
-      desc,
-      amt,
-      date,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    await incRef(_currentUID).add({
+      desc, amt, date,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     document.getElementById('inc-desc').value = '';
     document.getElementById('inc-amt').value = '';
-    notify('✅ Income set to ₹' + amt.toFixed(2), 'success');
+    notify('✅ ₹' + amt.toFixed(2) + ' added from ' + desc, 'success');
   } catch (err) {
-    notify('Error setting income: ' + err.message, 'error');
+    notify('Error adding income: ' + err.message, 'error');
   }
 }
 
@@ -684,29 +679,45 @@ function renderIncomeList() {
   if (!list) return;
   list.innerHTML = '';
 
-  if (!_income || _income.length === 0 || !_incomeAmt) {
-    list.innerHTML = '<li style="text-align:center;color:#64748b;padding:20px;border:none;background:transparent;">No income set yet — add your salary above</li>';
+  if (!_income || _income.length === 0) {
+    list.innerHTML = '<li style="text-align:center;color:#64748b;padding:20px;border:none;background:transparent;">No income sources added yet</li>';
     return;
   }
 
-  const it = _income[0]; // only one active income entry
-  const li = document.createElement('li');
-  li.innerHTML = `
-    <div>
-      <div><strong>${it.desc}</strong></div>
-      <div class="income-meta">Salary cycle from ${it.date} &bull; &#8377;${(it.amt || 0).toFixed(2)}</div>
-      <div style="font-size:11px;color:#94a3b8;margin-top:3px;">Only expenses from ${it.date} onwards affect the balance</div>
-    </div>
-    <div><button id="clear-income-btn">Reset</button></div>`;
-  list.appendChild(li);
-  li.querySelector('button').addEventListener('click', clearIncome);
+  // Show tip about expense cutoff
+  if (_incomeEarliestDate) {
+    const tip = document.createElement('li');
+    tip.style.cssText = 'border:none;background:#f0fdf4;border-radius:8px;padding:10px 14px;font-size:12px;color:#166534;margin-bottom:4px;';
+    tip.textContent = 'ℹ️ Expenses from ' + _incomeEarliestDate + ' onwards count toward your balance';
+    list.appendChild(tip);
+  }
+
+  _income.forEach(it => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div>
+        <div><strong>${it.desc}</strong></div>
+        <div class="income-meta">${it.date} &bull; &#8377;${(it.amt || 0).toFixed(2)}</div>
+      </div>
+      <div><button data-id="${it.id}">Delete</button></div>`;
+    list.appendChild(li);
+    li.querySelector('button').addEventListener('click', () => deleteIncome(it.id));
+  });
+
+  // Show total if more than 1 source
+  if (_income.length > 1) {
+    const total = document.createElement('li');
+    total.style.cssText = 'border-top:2px solid #bbf7d0;margin-top:8px;padding-top:12px;font-weight:700;color:#15803d;';
+    total.innerHTML = `<span>Total from ${_income.length} sources</span><span>&#8377;${_incomeTotal.toFixed(2)}</span>`;
+    list.appendChild(total);
+  }
 }
 
-async function clearIncome() {
-  if (!confirm('Reset your current income to zero?')) return;
+async function deleteIncome(id) {
+  if (!confirm('Remove this income source?')) return;
   try {
-    await incDocRef(_currentUID).delete();
-    notify('Income reset', 'success');
+    await incRef(_currentUID).doc(id).delete();
+    notify('Income source removed', 'success');
   } catch (err) {
     notify('Error: ' + err.message, 'error');
   }
