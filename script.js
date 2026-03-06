@@ -1677,4 +1677,97 @@ Thank you!`);
     openAdminDashboard();
   }
   // Firebase Auth session restored automatically via onAuthStateChanged
+
+  // ── Print / PDF / CSV ──────────────────────────────────────────────────────
+  function buildReportHTML(forPDF) {
+    const all = (_expenses || []).slice().sort((a, b) => a.date < b.date ? 1 : -1);
+    const username = _currentUsername || '';
+    const now = new Date().toLocaleString('en-IN');
+
+    const totalDebit = all.filter(e => e.type !== 'credit').reduce((s, e) => s + (e.amt || 0), 0);
+    const totalCredit = all.filter(e => e.type === 'credit').reduce((s, e) => s + (e.amt || 0), 0);
+    const net = totalDebit - totalCredit;
+
+    const rows = all.map(e => {
+      const isCredit = e.type === 'credit';
+      const amtStr = (isCredit ? '+' : '-') + '₹' + (e.amt || 0).toFixed(2);
+      return `<tr>
+        <td>${e.date}</td>
+        <td>${e.desc || ''}</td>
+        <td class="${isCredit ? 'cr' : 'dr'}">${amtStr}</td>
+        <td class="${isCredit ? 'cr' : 'dr'}">${isCredit ? 'Credit' : 'Expense'}</td>
+      </tr>`;
+    }).join('');
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>SpendWise Report — ${username}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #1e293b; padding: 32px; }
+    h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+    .meta { color: #64748b; font-size: 12px; margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #1e293b; color: white; }
+    thead th { padding: 10px 12px; text-align: left; font-size: 12px; letter-spacing: .5px; text-transform: uppercase; }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    td { padding: 9px 12px; border-bottom: 1px solid #e2e8f0; }
+    .dr { color: #ef4444; font-weight: 600; }
+    .cr { color: #16a34a; font-weight: 600; }
+    .summary { margin-top: 24px; display: flex; gap: 16px; flex-wrap: wrap; }
+    .s-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 20px; min-width: 160px; }
+    .s-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; }
+    .s-val { font-size: 20px; font-weight: 800; margin-top: 4px; }
+    @media print { body { padding: 16px; } button { display: none; } }
+  </style>
+</head>
+<body>
+  <h1>💸 SpendWise — Expense Report</h1>
+  <div class="meta">Account: ${username} &nbsp;|&nbsp; Generated: ${now} &nbsp;|&nbsp; ${all.length} entries</div>
+  <table>
+    <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Type</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="4" style="text-align:center;padding:20px;color:#94a3b8;">No records found</td></tr>'}</tbody>
+  </table>
+  <div class="summary">
+    <div class="s-box"><div class="s-label">Total Expenses</div><div class="s-val dr">−₹${totalDebit.toFixed(2)}</div></div>
+    <div class="s-box"><div class="s-label">Total Credits</div><div class="s-val cr">+₹${totalCredit.toFixed(2)}</div></div>
+    <div class="s-box"><div class="s-label">Net Spent</div><div class="s-val" style="color:#1e293b;">₹${net.toFixed(2)}</div></div>
+  </div>
+  ${forPDF ? '<script>window.onload=function(){window.print();}<\/script>' : ''}
+</body></html>`;
+  }
+
+  document.getElementById('print-bill')?.addEventListener('click', () => {
+    const win = window.open('', '_blank');
+    win.document.write(buildReportHTML(false));
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 600);
+  });
+
+  document.getElementById('download-pdf')?.addEventListener('click', () => {
+    const win = window.open('', '_blank');
+    win.document.write(buildReportHTML(true));
+    win.document.close();
+  });
+
+  document.getElementById('download-csv')?.addEventListener('click', () => {
+    const all = (_expenses || []).slice().sort((a, b) => a.date < b.date ? 1 : -1);
+    const header = 'Date,Description,Amount,Type\n';
+    const rows = all.map(e => {
+      const type = e.type === 'credit' ? 'Credit' : 'Expense';
+      const sign = e.type === 'credit' ? '' : '-';
+      const desc = (e.desc || '').replace(/"/g, '""');
+      return `${e.date},"${desc}",${sign}${(e.amt || 0).toFixed(2)},${type}`;
+    }).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `spendwise_${_currentUsername || 'report'}_${todayStr()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
 });
