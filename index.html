@@ -561,15 +561,28 @@
 
         <!-- ── TAB: EXPENSES ── -->
         <div class="tab-panel" id="tab-expenses">
-          <div class="page-header">
+          <div class="page-header" style="flex-wrap:wrap;gap:12px;">
             <div>
               <h2 class="page-title">Expenses</h2>
               <p class="page-sub">View and manage all your expenses</p>
             </div>
-            <div class="header-actions">
-              <button id="print-bill" class="btn-pro btn-outline" type="button">🖨️ Print</button>
-              <button id="download-pdf" class="btn-pro btn-outline" type="button">📄 PDF</button>
-              <button id="download-csv" class="btn-pro btn-outline" type="button">📊 CSV</button>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+              <!-- All Records -->
+              <div class="header-actions" style="gap:6px;">
+                <span style="font-size:11px;font-weight:600;color:#94a3b8;align-self:center;">All Records:</span>
+                <button id="print-bill" class="btn-pro btn-outline" type="button">🖨️ Print</button>
+                <button id="download-pdf" class="btn-pro btn-outline" type="button">📄 PDF</button>
+                <button id="download-csv" class="btn-pro btn-outline" type="button">📊 CSV</button>
+              </div>
+              <!-- By Date -->
+              <div class="header-actions" style="gap:6px;">
+                <span style="font-size:11px;font-weight:600;color:#94a3b8;align-self:center;">By Date:</span>
+                <input id="export-date" type="date" class="field-input"
+                  style="width:140px;font-size:12px;padding:6px 8px;" />
+                <button id="print-date" class="btn-pro btn-outline" type="button">🖨️ Print</button>
+                <button id="pdf-date" class="btn-pro btn-outline" type="button">📄 PDF</button>
+                <button id="csv-date" class="btn-pro btn-outline" type="button">📊 CSV</button>
+              </div>
             </div>
           </div>
 

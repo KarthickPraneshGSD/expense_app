@@ -875,77 +875,12 @@ async function resetToday() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  PRINT / EXPORT
+//  PRINT / EXPORT  (implementations wired in DOMContentLoaded at bottom)
 // ═══════════════════════════════════════════════════════════════════════════
-
-function printBill() {
-  const u = _currentUsername || 'User';
-  let date = prompt('Enter date to print (YYYY-MM-DD)', todayStr());
-  if (!date) return; date = date.trim();
-  const filtered = _expenses.filter(e => e.date === date);
-  const totalSpent = filtered.reduce((s, e) => s + e.amt, 0);
-  const bud = _budgets[date] || 0;
-  const rows = filtered.map(e =>
-    `<li style="padding:8px 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between;">
-      <span>${e.desc}</span><span>₹${e.amt.toFixed(2)}</span>
-    </li>`).join('');
-  const html = `<!DOCTYPE html><html><head><title>Expense Bill</title>
-    <style>body{font-family:sans-serif;max-width:400px;margin:auto;padding:20px}
-    h2{color:#6366f1}ul{list-style:none;padding:0}.total{font-weight:bold;font-size:18px;margin-top:16px}
-    </style></head><body>
-    <h2>Daily Expense Report</h2><p>Date: ${date}</p><p>User: ${u}</p>
-    <ul>${rows || '<li>No expenses</li>'}</ul>
-    <p class="total">Total: ₹${totalSpent.toFixed(2)}</p>
-    <p>Budget: ₹${bud.toFixed(2)} | Remaining: ₹${(bud - totalSpent).toFixed(2)}</p>
-    </body></html>`;
-  const w = window.open('', '', 'width=500,height=700');
-  w.document.write(html); w.document.close();
-  setTimeout(() => w.print(), 300);
-}
-
-function downloadCSV() {
-  const u = _currentUsername || 'User';
-  let date = prompt('Enter date to export (YYYY-MM-DD)', todayStr());
-  if (!date) return; date = date.trim();
-  const filtered = _expenses.filter(e => e.date === date);
-  let csv = 'Date,Description,Amount\n';
-  filtered.forEach(e => { csv += `${e.date},"${e.desc}",${e.amt.toFixed(2)}\n`; });
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = `expenses_${u}_${date}.csv`; a.click();
-  notify('CSV downloaded', 'success');
-}
-
-function downloadPDF() {
-  const u = _currentUsername || 'User';
-  let date = prompt('Enter date for PDF (YYYY-MM-DD)', todayStr());
-  if (!date) return; date = date.trim();
-  const filtered = _expenses.filter(e => e.date === date);
-  const totalSpent = filtered.reduce((s, e) => s + e.amt, 0);
-  const bud = _budgets[date] || 0;
-  try {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    let y = 20;
-    doc.setFontSize(16); doc.setTextColor(99, 102, 241);
-    doc.text('Daily Expense Report', 105, y, { align: 'center' }); y += 12;
-    doc.setFontSize(10); doc.setTextColor(80, 80, 80);
-    doc.text(`Date: ${date} | User: ${u}`, 105, y, { align: 'center' }); y += 12;
-    doc.setFontSize(9); doc.setTextColor(30, 41, 59);
-    filtered.forEach(e => {
-      doc.text(e.desc, 20, y);
-      doc.text('₹' + e.amt.toFixed(2), 180, y, { align: 'right' });
-      y += 8;
-      if (y > 270) { doc.addPage(); y = 20; }
-    });
-    y += 4;
-    doc.setFontSize(11); doc.setTextColor(99, 102, 241);
-    doc.text(`Total: ₹${totalSpent.toFixed(2)}`, 20, y); y += 8;
-    doc.text(`Budget: ₹${bud.toFixed(2)} | Remaining: ₹${(bud - totalSpent).toFixed(2)}`, 20, y);
-    doc.save(`expenses_${u}_${date}.pdf`);
-    notify('PDF downloaded', 'success');
-  } catch (e) { notify('PDF library not loaded', 'error'); }
-}
+// Legacy function names kept so any inline onclick= references still resolve
+function printBill() { document.getElementById('print-bill')?.click(); }
+function downloadCSV() { document.getElementById('download-csv')?.click(); }
+function downloadPDF() { document.getElementById('download-pdf')?.click(); }
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  ADMIN PANEL
@@ -1679,10 +1614,11 @@ Thank you!`);
   // Firebase Auth session restored automatically via onAuthStateChanged
 
   // ── Print / PDF / CSV ──────────────────────────────────────────────────────
-  function buildReportHTML(forPDF) {
-    const all = (_expenses || []).slice().sort((a, b) => a.date < b.date ? 1 : -1);
+  function buildReportHTML(forPDF, filterDate, items) {
+    const all = (items || (_expenses || [])).slice().sort((a, b) => a.date < b.date ? 1 : -1);
     const username = _currentUsername || '';
     const now = new Date().toLocaleString('en-IN');
+    const rangeLabel = filterDate ? `Date: ${filterDate}` : 'All Records';
 
     const totalDebit = all.filter(e => e.type !== 'credit').reduce((s, e) => s + (e.amt || 0), 0);
     const totalCredit = all.filter(e => e.type === 'credit').reduce((s, e) => s + (e.amt || 0), 0);
@@ -1769,5 +1705,50 @@ Thank you!`);
     a.download = `spendwise_${_currentUsername || 'report'}_${todayStr()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  });
+
+  // ── By Date export buttons ──────────────────────────────────────────────
+  const exportDateInput = document.getElementById('export-date');
+  if (exportDateInput) exportDateInput.value = todayStr();
+
+  function getExportDate() {
+    const d = exportDateInput?.value;
+    if (!d) { notify('Pick a date in the "By Date" row first', 'error'); return null; }
+    return d;
+  }
+
+  document.getElementById('print-date')?.addEventListener('click', () => {
+    const date = getExportDate(); if (!date) return;
+    const items = (_expenses || []).filter(e => e.date === date);
+    const win = window.open('', '_blank');
+    win.document.write(buildReportHTML(false, date, items));
+    win.document.close(); win.focus();
+    setTimeout(() => win.print(), 600);
+  });
+
+  document.getElementById('pdf-date')?.addEventListener('click', () => {
+    const date = getExportDate(); if (!date) return;
+    const items = (_expenses || []).filter(e => e.date === date);
+    const win = window.open('', '_blank');
+    win.document.write(buildReportHTML(true, date, items));
+    win.document.close();
+  });
+
+  document.getElementById('csv-date')?.addEventListener('click', () => {
+    const date = getExportDate(); if (!date) return;
+    const items = (_expenses || []).filter(e => e.date === date);
+    const header = 'Date,Description,Amount,Type\n';
+    const rows = items.map(e => {
+      const type = e.type === 'credit' ? 'Credit' : 'Expense';
+      const sign = e.type === 'credit' ? '' : '-';
+      const desc = (e.desc || '').replace(/"/g, '""');
+      return `${e.date},"${desc}",${sign}${(e.amt || 0).toFixed(2)},${type}`;
+    }).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `spendwise_${_currentUsername || 'report'}_${date}.csv`;
+    a.click(); URL.revokeObjectURL(url);
   });
 });
