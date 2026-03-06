@@ -613,9 +613,13 @@ function renderExpenses() {
           <span class="${isCredit ? 'credit-amount' : ''}">${isCredit ? '+' : ''}&#8377;${(it.amt || 0).toFixed(2)}</span>
         </div>
       </div>
-      <div><button data-id="${it.id}">Delete</button></div>`;
+      <div class="exp-actions">
+        <button class="btn-edit" data-id="${it.id}">✏️</button>
+        <button class="btn-del"  data-id="${it.id}">Delete</button>
+      </div>`;
     list.appendChild(li);
-    li.querySelector('button').addEventListener('click', () => deleteExpense(it.id));
+    li.querySelector('.btn-edit').addEventListener('click', () => openEditExpenseModal(it));
+    li.querySelector('.btn-del').addEventListener('click', () => deleteExpense(it.id));
   });
 }
 
@@ -625,6 +629,52 @@ async function deleteExpense(id) {
     await expsRef(_currentUID).doc(id).delete();
     notify('Deleted', 'success');
     // listener auto-updates
+  } catch (err) {
+    notify('Error: ' + err.message, 'error');
+  }
+}
+
+// ── Edit Expense Modal ──────────────────────────────────────────────────────
+let _editExpId = null;
+let _editExpType = 'debit';
+
+function openEditExpenseModal(item) {
+  _editExpId = item.id;
+  _editExpType = item.type || 'debit';
+
+  document.getElementById('edit-exp-date').value = item.date || '';
+  document.getElementById('edit-exp-desc').value = item.desc || '';
+  document.getElementById('edit-exp-amt').value = item.amt || '';
+  setEditExpType(_editExpType);
+
+  document.getElementById('edit-expense-modal').style.display = 'flex';
+}
+
+function setEditExpType(type) {
+  _editExpType = type;
+  const isCredit = type === 'credit';
+  const dBtn = document.getElementById('edit-type-debit');
+  const cBtn = document.getElementById('edit-type-credit');
+  if (dBtn) { dBtn.classList.toggle('type-btn--active', !isCredit); dBtn.classList.toggle('exp-mode', !isCredit); }
+  if (cBtn) { cBtn.classList.toggle('type-btn--active', isCredit); cBtn.classList.toggle('credit-mode', isCredit); }
+}
+
+function closeEditExpenseModal() {
+  document.getElementById('edit-expense-modal').style.display = 'none';
+  _editExpId = null;
+}
+
+async function saveEditExpense() {
+  const date = document.getElementById('edit-exp-date').value;
+  const desc = document.getElementById('edit-exp-desc').value.trim();
+  const amt = parseFloat(document.getElementById('edit-exp-amt').value);
+  if (!date) return notify('Pick a date', 'error');
+  if (!desc) return notify('Enter a description', 'error');
+  if (isNaN(amt) || amt <= 0) return notify('Enter a valid amount', 'error');
+  try {
+    await expsRef(_currentUID).doc(_editExpId).update({ date, desc, amt, type: _editExpType });
+    notify('Entry updated ✅', 'success');
+    closeEditExpenseModal();
   } catch (err) {
     notify('Error: ' + err.message, 'error');
   }
@@ -1532,6 +1582,16 @@ Thank you!`);
 
   const addIncBtn = document.getElementById('add-income');
   if (addIncBtn) addIncBtn.addEventListener('click', addIncome);
+
+  // ── Edit Expense Modal buttons ──
+  document.getElementById('edit-type-debit')?.addEventListener('click', () => setEditExpType('debit'));
+  document.getElementById('edit-type-credit')?.addEventListener('click', () => setEditExpType('credit'));
+  document.getElementById('edit-exp-save')?.addEventListener('click', saveEditExpense);
+  document.getElementById('edit-exp-close')?.addEventListener('click', closeEditExpenseModal);
+  document.getElementById('edit-exp-cancel')?.addEventListener('click', closeEditExpenseModal);
+  document.getElementById('edit-expense-modal')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('edit-expense-modal')) closeEditExpenseModal();
+  });
 
   // ── Split Bill ──
   const splitDateInput = document.getElementById('split-date');

@@ -666,6 +666,39 @@
     </div>
   </div>
 
+  <!-- ── EDIT EXPENSE MODAL ── -->
+  <div id="edit-expense-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:440px;">
+      <div class="modal-header">
+        <h3 class="modal-title">✏️ Edit Entry</h3>
+        <button id="edit-exp-close" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;gap:8px;">
+          <button id="edit-type-debit" class="type-btn type-btn--active exp-mode" type="button" style="flex:1;">−
+            Expense</button>
+          <button id="edit-type-credit" class="type-btn" type="button" style="flex:1;">＋ Credit</button>
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Date</label>
+          <input id="edit-exp-date" type="date" class="field-input" />
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Description</label>
+          <input id="edit-exp-desc" type="text" maxlength="60" class="field-input" />
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Amount (₹)</label>
+          <input id="edit-exp-amt" type="number" class="field-input" />
+        </div>
+        <div class="btn-row" style="margin-top:4px;">
+          <button id="edit-exp-save" class="btn-pro btn-indigo" type="button" style="flex:1;">💾 Save Changes</button>
+          <button id="edit-exp-cancel" class="btn-pro btn-outline" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase SDK (compat mode — works with plain JS, no bundler needed) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>

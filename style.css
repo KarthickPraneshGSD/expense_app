@@ -946,6 +946,53 @@ body {
   border-color: var(--red);
 }
 
+/* ── Expense row actions (Edit + Delete) ── */
+.exp-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.btn-edit {
+  background: #eff6ff;
+  color: #3b82f6;
+  border: 1.5px solid rgba(59, 130, 246, .2);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .2s ease;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.btn-edit:hover {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.btn-del {
+  background: var(--red-soft);
+  color: var(--red);
+  border: 1.5px solid rgba(239, 68, 68, .2);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .2s ease;
+  flex-shrink: 0;
+}
+
+.btn-del:hover {
+  background: var(--red);
+  color: white;
+  border-color: var(--red);
+}
+
 /* ── EXPENSES TOTAL ───────────────────────────────────────────────────────── */
 .expenses-total {
   display: flex;
@@ -1900,71 +1947,73 @@ body {
   font-family: 'Courier New', monospace;
   font-size: 14px;
   letter-spacing: .5px;
-}/* ── TYPE TOGGLE (Expense / Credit) ─────────────────────────────────────── */
+}
+
+/* ── TYPE TOGGLE (Expense / Credit) ─────────────────────────────────────── */
 .type-toggle {
-    display: flex;
-    gap: 4px;
-    background: var(--slate-100);
-    border-radius: var(--radius-sm);
-    padding: 3px;
+  display: flex;
+  gap: 4px;
+  background: var(--slate-100);
+  border-radius: var(--radius-sm);
+  padding: 3px;
 }
 
 .type-btn {
-    padding: 5px 12px;
-    border: none;
-    border-radius: calc(var(--radius-sm) - 2px);
-    font-size: 12px;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    color: var(--slate-500);
-    background: transparent;
-    transition: all .2s ease;
-    white-space: nowrap;
+  padding: 5px 12px;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--slate-500);
+  background: transparent;
+  transition: all .2s ease;
+  white-space: nowrap;
 }
 
 .type-btn--active {
-    background: white;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, .12);
+  background: white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .12);
 }
 
 /* Expense mode — active is red */
 .type-btn--active.exp-mode {
-    color: var(--red);
+  color: var(--red);
 }
 
 /* Credit mode — active is green */
 .type-btn--active.credit-mode {
-    color: #16a34a;
+  color: #16a34a;
 }
 
 /* ── CREDIT ROW IN EXPENSE LIST ────────────────────────────────────────── */
 .expenses-list li.credit-row {
-    border-color: #bbf7d0;
-    background: #f0fdf4;
+  border-color: #bbf7d0;
+  background: #f0fdf4;
 }
 
 .expenses-list li.credit-row:hover {
-    border-color: #16a34a;
-    background: #dcfce7;
+  border-color: #16a34a;
+  background: #dcfce7;
 }
 
 .credit-amount {
-    color: #16a34a;
-    font-weight: 700;
+  color: #16a34a;
+  font-weight: 700;
 }
 
 .credit-badge {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 700;
-    background: #dcfce7;
-    color: #16a34a;
-    border: 1px solid #bbf7d0;
-    border-radius: 4px;
-    padding: 1px 5px;
-    margin-left: 5px;
-    vertical-align: middle;
-    text-transform: uppercase;
-    letter-spacing: .4px;
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  background: #dcfce7;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 5px;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: .4px;
 }
